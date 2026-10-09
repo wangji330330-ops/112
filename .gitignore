@@ -1,0 +1,9 @@
+# 开发用截图（可用 node tools/cdp.mjs 随时重新生成）
+tools/shots/
+
+# 系统与编辑器
+.DS_Store
+Thumbs.db
+desktop.ini
+node_modules/
+*.log

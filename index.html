@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>八卦枢机 · 术数占卜</title>
+<meta name="description" content="以八卦为轴的中华术数占卜体验：梅花易数、六爻、奇门遁甲、大六壬、太乙神数、小六壬、紫微斗数、四柱八字、堪舆、蓍草、龟甲、塔罗等三十门。">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<header id="topbar">
+  <div class="brand" id="brand">
+    <span class="seal-mini">卜</span>
+    <span class="brand-text">八卦枢机</span>
+    <span class="brand-sub">周易术数 · 三十门</span>
+  </div>
+  <nav id="crumbs" aria-label="路径"></nav>
+</header>
+
+<main>
+  <!-- 八卦盘 -->
+  <section id="hub" aria-label="八卦">
+    <p class="hub-kicker">易有太极 · 是生两仪 · 两仪生四象 · 四象生八卦</p>
+    <div class="hub-inner">
+      <div id="wheel-host"></div>
+      <div id="branch-nodes"></div>
+    </div>
+    <div id="other-strip"></div>
+    <p class="hub-hint">择一卦 &nbsp;·&nbsp; 入其门</p>
+    <svg id="branch-lines" aria-hidden="true"></svg>
+  </section>
+
+  <!-- 卷轴面板 -->
+  <aside id="panel" aria-label="术数详情" aria-hidden="true">
+    <div class="panel-head" id="panel-head"></div>
+    <div class="panel-body" id="panel-body"></div>
+  </aside>
+</main>
+
+<footer id="footnote">
+  <span>诸法皆为传统文化之数术模型，排盘力求合于古法，断语仅供文化体验与自省，不作医疗、财务、法律之凭据。</span>
+</footer>
+
+<!-- 换页遮罩 -->
+<div id="fade-layer" aria-hidden="true"></div>
+<div id="toast" role="status" aria-live="polite"></div>
+
+<script src="js/core/rng.js"></script>
+<script src="js/core/data.js"></script>
+<script src="js/core/ganzhi.js"></script>
+<script src="js/core/tables.js"></script>
+<script src="js/core/ui.js"></script>
+<script src="js/core/registry.js"></script>
+
+<!-- 乾 · 天 -->
+<script src="js/arts/qian-qimen.js"></script>
+<script src="js/arts/qian-taiyi.js"></script>
+<script src="js/arts/qian-huangji.js"></script>
+<script src="js/arts/qian-taixuan.js"></script>
+<!-- 坤 · 地 -->
+<script src="js/arts/kun-fengshui.js"></script>
+<script src="js/arts/kun-bazhai.js"></script>
+<script src="js/arts/kun-xuankong.js"></script>
+<script src="js/arts/kun-luopan.js"></script>
+<!-- 震 · 雷 -->
+<script src="js/arts/zhen-liuyao.js"></script>
+<script src="js/arts/zhen-jinqian.js"></script>
+<script src="js/arts/zhen-meihua.js"></script>
+<!-- 巽 · 风 -->
+<script src="js/arts/xun-cezi.js"></script>
+<script src="js/arts/xun-zhanmeng.js"></script>
+<script src="js/arts/xun-xingming.js"></script>
+<!-- 坎 · 水 -->
+<script src="js/arts/kan-daliuren.js"></script>
+<script src="js/arts/kan-xiaoliuren.js"></script>
+<script src="js/arts/kan-jinkoujue.js"></script>
+<!-- 离 · 火 -->
+<script src="js/arts/li-bazi.js"></script>
+<script src="js/arts/li-ziwei.js"></script>
+<script src="js/arts/li-tieban.js"></script>
+<script src="js/arts/li-qizheng.js"></script>
+<!-- 艮 · 山 -->
+<script src="js/arts/gen-shicao.js"></script>
+<script src="js/arts/gen-guijia.js"></script>
+<script src="js/arts/gen-lingqi.js"></script>
+<script src="js/arts/gen-heluo.js"></script>
+<!-- 兑 · 泽 -->
+<script src="js/arts/dui-qianshi.js"></script>
+<script src="js/arts/dui-zhibei.js"></script>
+<script src="js/arts/dui-minjian.js"></script>
+<script src="js/arts/dui-zeri.js"></script>
+<script src="js/arts/dui-xiangshu.js"></script>
+<script src="js/arts/dui-fuji.js"></script>
+
+<script src="js/core/hub.js"></script>
+<script src="js/core/app.js"></script>
+</body>
+</html>
