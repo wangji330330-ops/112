@@ -10,7 +10,7 @@
 
   /* 顺时针（自顶端起）：乾 巽 坎 艮 坤 震 离 兑 —— 传统先天八卦图方位 */
   const WHEEL_ORDER = ['qian', 'xun', 'kan', 'gen', 'kun', 'zhen', 'li', 'dui'];
-  const R_OUT = 470, R_IN = 300;
+  const R_OUT = 470, R_IN = 288;
   const CN = 500;
 
   function polar(r, deg) {
@@ -27,7 +27,11 @@
 
   /* 八方文字：不随盘自转，而以「文字块中心到盘心的距离」算出落点，
      故无论盘如何转动，八方之卦名永远正立可读。 */
-  const R_LABEL = 355;                       // 文字块中心至盘心（1000 视框单位）
+  /* 八方文字：不随盘自转，而以「文字块中心到盘心的距离」算出落点，
+     故无论盘如何转动，八方之卦名永远正立可读。
+     扇区自 R_IN(288) 至 R_OUT(470)，文字块中心取 R_LABEL(381)，
+     卦象（爻）与卦名分别落在 400 / 321 两条基线上，上下留白大致相当。 */
+  const R_LABEL = 381;
   function labelXY(i, sel) {
     const phi = (i - sel) * 45 * Math.PI / 180;
     return [500 + R_LABEL * Math.sin(phi), 500 - R_LABEL * Math.cos(phi)];
@@ -38,7 +42,6 @@
     current: null,
     onOpenArt: null,
     onOpenBranch: null,
-    _ro: null,
 
     isMobile() { return window.matchMedia('(max-width: 940px)').matches; },
 
@@ -49,15 +52,6 @@
       this.setCenter(null);
       this.buildOtherStrip();
       this.bind();
-      const rot = document.getElementById('wheelRot');
-      /* 懒自适应：尺寸变化则重画连线 */
-      if (window.ResizeObserver) {
-        this._ro = new ResizeObserver(() => this.scheduleLines());
-        this._ro.observe(host);
-        const bn = document.getElementById('branch-nodes');
-        if (bn) this._ro.observe(bn);
-      }
-      window.addEventListener('resize', () => this.scheduleLines());
     },
 
     buildSvg() {
@@ -88,12 +82,10 @@
       p.push(`<g id="sec-labels">`);
       WHEEL_ORDER.forEach((id, i) => {
         const g = C.GUA_BY_ID[id];
-        const n = window.artsOfGua(id).length;
         const xy = labelXY(i, 0);
         p.push(`<g class="sec-label" data-i="${i}" style="transform:${labelTf(xy[0], xy[1])}">`);
-        p.push(`<text class="sec-trig" x="0" y="-47" text-anchor="middle" font-size="56">${g.symbol}</text>`);
-        p.push(`<text class="sec-name" x="0" y="17" text-anchor="middle" font-size="46" letter-spacing="6">${g.name}</text>`);
-        p.push(`<text class="sec-nat" x="0" y="47" text-anchor="middle" font-size="22">${g.nature} · ${n}门</text>`);
+        p.push(`<text class="sec-trig" x="0" y="-14" text-anchor="middle" font-size="52">${g.symbol}</text>`);
+        p.push(`<text class="sec-name" x="0" y="60" text-anchor="middle" font-size="46">${g.name}</text>`);
         p.push('</g>');
       });
       p.push(`</g>`);
@@ -187,7 +179,6 @@
       document.body.classList.remove('branch-open');
       const bn = document.getElementById('branch-nodes');
       bn.innerHTML = '';
-      document.getElementById('branch-lines').innerHTML = '';
       this.setCenter(null);
     },
 
@@ -218,49 +209,6 @@
         `</button>`).join('');
       bn.querySelectorAll('.bnode').forEach(el => {
         el.addEventListener('click', () => { if (!el.disabled && this.onOpenArt) this.onOpenArt(el.dataset.art); });
-      });
-      this.scheduleLines();
-      /* 待缩放过渡结束后再精确画一次 */
-      setTimeout(() => this.drawLines(), 950);
-      setTimeout(() => this.drawLines(), 1800);
-    },
-
-    scheduleLines() {
-      if (this._raf) cancelAnimationFrame(this._raf);
-      this._raf = requestAnimationFrame(() => this.drawLines());
-    },
-
-    drawLines() {
-      const svg = document.getElementById('branch-lines');
-      const hub = document.getElementById('hub');
-      const host = document.getElementById('wheel-host');
-      if (!svg || !hub || !host) return;
-      if (!this.current) { svg.innerHTML = ''; return; }
-      const hr = hub.getBoundingClientRect();
-      const wr = host.getBoundingClientRect();
-      svg.setAttribute('viewBox', `0 0 ${Math.round(hr.width)} ${Math.round(hr.height)}`);
-      svg.setAttribute('width', Math.round(hr.width));
-      svg.setAttribute('height', Math.round(hr.height));
-      const sx = wr.left + wr.width / 2 - hr.left;
-      const sy = wr.top - hr.top + wr.height * 0.028;      /* 顶端扇区外缘附近 */
-      const nodes = Array.prototype.slice.call(document.querySelectorAll('.bnode'));
-      const out = [];
-      out.push(`<circle class="bl-origin" cx="${sx.toFixed(1)}" cy="${sy.toFixed(1)}" r="4.5"/>`);
-      nodes.forEach((n, i) => {
-        const r = n.getBoundingClientRect();
-        const ex = r.left - hr.left, ey = r.top + r.height / 2 - hr.top;
-        const cx1 = sx + (ex - sx) * 0.62, cy1 = sy + (ey - sy) * 0.1;
-        out.push(`<path class="bl" d="M${sx.toFixed(1)},${sy.toFixed(1)} Q${cx1.toFixed(1)},${cy1.toFixed(1)} ${ex.toFixed(1)},${ey.toFixed(1)}" style="--i:${i}"/>`);
-        out.push(`<circle class="bl-dot" cx="${ex.toFixed(1)}" cy="${ey.toFixed(1)}" r="3.4" style="--i:${i}"/>`);
-      });
-      svg.innerHTML = out.join('');
-      /* 连线以淡入呈现（无水墨描线动画） */
-      svg.querySelectorAll('.bl, .bl-dot, .bl-origin').forEach(el => {
-        el.style.opacity = '0';
-        requestAnimationFrame(() => {
-          el.style.transition = 'opacity .22s ease';
-          el.style.opacity = '1';
-        });
       });
     }
   };

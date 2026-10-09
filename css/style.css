@@ -132,10 +132,8 @@ body.panel-open #topbar{right:var(--panel-w);}
 .sec-label{pointer-events:none; transition:transform .8s var(--ease);}
 .sec-label .sec-trig{font-family:var(--font-song); fill:var(--ink); transition:fill .18s;}
 .sec-label .sec-name{font-family:var(--font-kai); fill:var(--ink); transition:fill .18s;}
-.sec-label .sec-nat{font-family:var(--font-sans); fill:var(--ink-4); letter-spacing:.04em; transition:fill .18s;}
 .sec-label.hot .sec-trig,.sec-label.on .sec-trig,
 .sec-label.hot .sec-name,.sec-label.on .sec-name{fill:var(--cinnabar);}
-.sec-label.hot .sec-nat,.sec-label.on .sec-nat{fill:var(--cinnabar-2);}
 
 .ring-txt{fill:var(--ink-3); font-family:var(--font-song);}
 .ring-txt.alt{fill:var(--ink-4);}
@@ -177,13 +175,6 @@ body.panel-open #topbar{right:var(--panel-w);}
 .bnode .tags{margin-top:8px; display:flex; gap:6px; flex-wrap:wrap;}
 .bnode.pending{opacity:.5; cursor:default;}
 .bnode.pending:hover{transform:none; box-shadow:var(--shadow-sm); border-color:var(--line);}
-
-/* ---------- 卦与术数之间的连线 ---------- */
-#branch-lines{position:absolute; left:0; top:0; z-index:1; pointer-events:none; overflow:visible;}
-.bl{fill:none; stroke:var(--line-strong); stroke-width:1.5; stroke-linecap:round; transition:opacity .3s;}
-.bl:hover{stroke:var(--cinnabar);}
-.bl-dot{fill:var(--surface); stroke:var(--cinnabar); stroke-width:1.5;}
-.bl-origin{fill:var(--cinnabar); stroke:none;}
 
 /* ---------- 大八卦之下的其他术数 ---------- */
 #other-strip{
@@ -482,12 +473,6 @@ button.chip.sel:hover{background:var(--accent-soft);}
 #footnote span{display:block; max-width:130ch;}
 body.panel-open #footnote{opacity:0; transform:translateY(8px);}
 
-/* ---------- 换页遮罩（替代水墨转场） ---------- */
-#fade-layer{
-  position:fixed; inset:0; z-index:90; pointer-events:none;
-  background:var(--bg); opacity:0;
-}
-
 /* ---------- 提示条 ---------- */
 #toast{
   position:fixed; left:50%; bottom:48px; z-index:120;
@@ -516,7 +501,6 @@ body.panel-open #footnote{opacity:0; transform:translateY(8px);}
   #hub.shift{padding-right:12px;}
   #hub.branch .hub-inner{grid-template-columns:auto 0px;}
   #branch-nodes{display:none;}
-  #branch-lines{display:none;}
   #hub #wheel-host{--wheel: min(72vmin,380px);}
   #hub.branch #wheel-host{--wheel: min(60vmin,340px);}
   .strip-note{display:none;}

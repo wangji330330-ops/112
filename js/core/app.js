@@ -8,28 +8,9 @@
   const $$ = (s, r) => Array.prototype.slice.call((r || document).querySelectorAll(s));
 
   /* ============================================================
-     换页：整屏遮罩淡入淡出（清晰的过渡，不用水墨）
+     换页：不加整屏遮罩。面板自身滑入滑出、八卦盘自身转动、
+     术数正文淡入，主页始终可见，故不生硬。
      ============================================================ */
-  const Fade = {
-    init() {
-      this.layer = $('#fade-layer');
-    },
-    hide() {
-      if (this.layer) this.layer.style.opacity = '0';
-    },
-    /* 全流程：遮罩淡入 → 换内容 → 淡出 */
-    async run(fn) {
-      const layer = this.layer;
-      if (!layer) { try { fn(); } catch (e) { console.error(e); } return; }
-      layer.style.transition = 'opacity .16s ease';
-      layer.style.opacity = '1';
-      await new Promise(r => setTimeout(r, 175));
-      try { fn(); } catch (e) { console.error(e); }
-      await new Promise(r => setTimeout(r, 30));
-      layer.style.opacity = '0';
-      await new Promise(r => setTimeout(r, 175));
-    }
-  };
 
   /* ============================================================
      提示
@@ -50,11 +31,10 @@
     state: { art: null, gua: null, mode: 'hub' },
 
     init() {
-      Fade.init();
       window.HUB.init();
       window.HUB.onOpenArt = id => this.openArt(id);
       window.HUB.onOpenBranch = guaId => this.openBranchList(guaId);
-      $('#brand').addEventListener('click', () => this.goHub(true));
+      $('#brand').addEventListener('click', () => this.goHub());
       window.addEventListener('keydown', e => { if (e.key === 'Escape') this.back(); });
       window.addEventListener('hashchange', () => this.applyHash());
       this.renderCrumbs();
@@ -70,7 +50,7 @@
       if (m) { if (this.state.art !== m[1]) this.openArt(m[1], true); return; }
       m = h.match(/^#\/gua\/(\w+)/);
       if (m && C.GUA_BY_ID[m[1]]) { if (this.state.mode !== 'branch' || this.state.gua !== m[1]) this.goGua(m[1], true); return; }
-      if (this.state.mode !== 'hub') this.goHub(false, true);
+      if (this.state.mode !== 'hub') this.goHub();
     },
 
     /* ---------- 路径面包屑 ---------- */
@@ -100,7 +80,7 @@
       }
       el.innerHTML = parts.join('');
       $$('.crumb[data-go]', el).forEach(b => b.addEventListener('click', () => {
-        if (b.dataset.go === 'hub') this.goHub(true);
+        if (b.dataset.go === 'hub') this.goHub();
         else if (b.dataset.go === 'gua') this.goGua(this.state.gua);
       }));
     },
@@ -108,37 +88,29 @@
     mobile() { return window.matchMedia('(max-width: 940px)').matches; },
 
     /* ---------- 回八卦 ---------- */
-    goHub(animate, fromHash) {
-      const act = () => {
-        this.closePanel();
-        window.HUB.clear();
-        this.state = { art: null, gua: null, mode: 'hub' };
-        this.renderCrumbs();
-      };
-      if (fromHash) { act(); return; }
-      this.setHash('#/');
-      if (animate) Fade.run(act); else act();
+    goHub(fromHash) {
+      if (!fromHash) this.setHash('#/');
+      this.closePanel();
+      window.HUB.clear();
+      this.state = { art: null, gua: null, mode: 'hub' };
+      this.renderCrumbs();
     },
 
     /* ---------- 回到某卦的分支视图 ---------- */
     goGua(guaId, fromHash) {
-      const act = () => {
-        this.closePanel();
-        this.state = { art: null, gua: guaId, mode: 'branch' };
-        window.HUB.select(guaId);
-        this.renderCrumbs();
-        if (this.mobile()) this.openBranchList(guaId);
-      };
-      if (fromHash) { act(); return; }
-      this.setHash('#/gua/' + guaId);
-      Fade.run(act);
+      if (!fromHash) this.setHash('#/gua/' + guaId);
+      this.closePanel();
+      this.state = { art: null, gua: guaId, mode: 'branch' };
+      window.HUB.select(guaId);
+      this.renderCrumbs();
+      if (this.mobile()) this.openBranchList(guaId);
     },
 
     back() {
       if (this.state.mode === 'art') {
-        if (this.state.gua) this.goGua(this.state.gua); else this.goHub(true);
+        if (this.state.gua) this.goGua(this.state.gua); else this.goHub();
       } else if (this.state.mode === 'branch') {
-        this.goHub(true);
+        this.goHub();
       }
     },
 
@@ -186,7 +158,7 @@
       $$('#panel-body .art-card').forEach(el => {
         el.addEventListener('click', () => { if (!el.disabled) this.openArt(el.dataset.art); });
       });
-      $$('#panel-head [data-act="hub"]').forEach(b => b.addEventListener('click', () => this.goHub(true)));
+      $$('#panel-head [data-act="hub"]').forEach(b => b.addEventListener('click', () => this.goHub()));
       $$('#panel-head [data-act="back"]').forEach(b => b.addEventListener('click', () => this.back()));
     },
 
@@ -196,14 +168,10 @@
       const meta = window.artMeta(artId);
       if (!art) { toast('此术数尚在整理中'); return; }
       const guaId = meta && meta.gua !== 'other' ? meta.gua : null;
-      const act = () => {
-        this.state = { art: artId, gua: guaId, mode: 'art' };
-        this.renderArt(art, meta);
-        this.renderCrumbs();
-      };
-      if (fromHash) { act(); return; }
-      this.setHash('#/art/' + artId);
-      Fade.run(act);
+      if (!fromHash) this.setHash('#/art/' + artId);
+      this.state = { art: artId, gua: guaId, mode: 'art' };
+      this.renderArt(art, meta);
+      this.renderCrumbs();
     },
 
     renderArt(art, meta) {
@@ -278,7 +246,7 @@
         navigator.clipboard.writeText(txt).then(() => toast('已复制'), () => toast('复制失败'));
       });
       $$('#panel-head [data-act="back"]', document).forEach(b => b.addEventListener('click', () => this.back()));
-      $$('#panel-head [data-act="hub"]', document).forEach(b => b.addEventListener('click', () => this.goHub(true)));
+      $$('#panel-head [data-act="hub"]', document).forEach(b => b.addEventListener('click', () => this.goHub()));
     },
 
     run(art) {
