@@ -103,7 +103,7 @@ body.panel-open #topbar{right:var(--panel-w);}
   margin:0; font-size:clamp(12px,1.05vw,13.5px); letter-spacing:.14em; color:var(--ink-4);
   transition:opacity .3s; display:flex; gap:12px; align-items:center; flex-wrap:wrap; justify-content:center;
 }
-.spin-hint{font-size:clamp(11px,.95vw,12.5px); color:var(--ink-4); letter-spacing:.08em;}
+
 #hub.shift .hub-kicker,#hub.shift .hub-hint{opacity:0;}
 
 .hub-inner{

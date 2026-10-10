@@ -140,16 +140,13 @@
         });
       });
       const center = document.getElementById('wheel-center');
-      const triggerSpin = () => {
+      center.addEventListener('click', () => {
         if (this.isSpinning) {
           this.stopSpin();
           return;
         }
         if (this.current) { this.clear(); return; }
         this.spin();
-      };
-      center.addEventListener('click', () => {
-        triggerSpin();
       });
     },
 
@@ -270,7 +267,7 @@
           cancelAnimationFrame(this._spinAnim);
           this._spinAnim = null;
           this._currentRot = 0;
-          rot.style.transition = 'transform .6s var(--ease)';
+          rot.style.transition = 'none';
           rot.style.transform = 'rotate(0deg)';
           this.setLabels(-1);
         }
