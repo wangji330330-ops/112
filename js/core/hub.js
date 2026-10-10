@@ -65,15 +65,17 @@
       p.push(`<circle cx="500" cy="500" r="${R_OUT + 8}" class="ring-line"/>`);
       p.push(`<g class="wheel-rot" id="wheelRot">`);
       /* 十二地支环（原二十四山装饰环从略，以求清晰） */
+      p.push(`<g id="zodiacRing">`);
       p.push(`<circle cx="500" cy="500" r="212" class="ring-line"/>`);
       C.ZHI.forEach((z, i) => {
         const deg = i * 30;
         p.push(`<g transform="rotate(${deg} 500 500)"><text class="ring-txt" x="500" y="${500 - 256 + 7}" text-anchor="middle" font-size="20">${z}</text></g>`);
       });
-      /* 盘心阴阳鱼：阳之首朝乾（先天之位在上）、阴之首朝坤（在下），
-         与盘同转，故乾恒为阳首、坤恒为阴首。 */
+      p.push(`</g>`);
+      /* 盘心阴阳鱼：固定在盘心，只绕自身中心原地转动，绝不离开中心。
+         阳之首朝乾（先天之位在上）、阴之首朝坤（在下）。 */
       const TR = 112;
-      p.push(`<g class="taiji" aria-hidden="true">
+      p.push(`<g class="taiji" id="taijiCenter" aria-hidden="true">
         <circle class="tj-yin-bg" cx="500" cy="500" r="${TR}"/>
         <path class="tj-yang-fish" d="M500,${500 - TR} A${TR},${TR} 0 0 1 500,${500 + TR} A${TR / 2},${TR / 2} 0 0 0 500,500 A${TR / 2},${TR / 2} 0 0 1 500,${500 - TR} Z"/>
         <circle class="tj-eye-b" cx="500" cy="${500 - TR / 2}" r="13"/>
@@ -171,22 +173,28 @@
       });
     },
 
-    /* ---------- 选择某卦 ---------- */
+    /* 盘面三部分：整盘 wheelRot / 地支环 / 盘心阴阳鱼。
+       阴阳鱼恒不施加任何额外变换，只随盘绕盘心原地自转，故永不离开中心。 */
+    _parts() {
+      return {
+        rot: document.getElementById('wheelRot'),
+        ring: document.getElementById('zodiacRing'),
+        taiji: document.getElementById('taijiCenter')
+      };
+    },
+
     select(id) {
       const idx = WHEEL_ORDER.indexOf(id);
       if (idx < 0) return;
       this.current = id;
-      const rot = document.getElementById('wheelRot');
-      const zodiacRing = rot.querySelector('circle[class="ring-line"]').parentNode;
-      const taiji = rot.querySelector('.taiji');
+      const { rot, ring } = this._parts();
       const target = -idx * 45;
       this._currentRot = target;
       rot.style.transition = 'transform .8s var(--ease)';
       rot.style.transform = `rotate(${target}deg)`;
-      zodiacRing.style.transition = 'transform .8s var(--ease)';
-      zodiacRing.style.transform = 'rotate(0deg)';
-      taiji.style.transition = 'transform .8s var(--ease)';
-      taiji.style.transform = 'rotate(0deg)';
+      /* 地支环随整盘同转，回归自身 0°（不额外补偿） */
+      ring.style.transition = 'transform .8s var(--ease)';
+      ring.style.transform = 'rotate(0deg)';
       this.setLabels(idx);
       document.querySelectorAll('.sector').forEach(s => s.classList.toggle('on', s.dataset.gua === id));
       window.HUB.setCenter(id);
@@ -203,15 +211,11 @@
     clear() {
       this.current = null;
       this._currentRot = 0;
-      const rot = document.getElementById('wheelRot');
-      const zodiacRing = rot.querySelector('circle[class="ring-line"]').parentNode;
-      const taiji = rot.querySelector('.taiji');
+      const { rot, ring } = this._parts();
       rot.style.transition = 'transform .8s var(--ease)';
       rot.style.transform = 'rotate(0deg)';
-      zodiacRing.style.transition = 'transform .8s var(--ease)';
-      zodiacRing.style.transform = 'rotate(0deg)';
-      taiji.style.transition = 'transform .8s var(--ease)';
-      taiji.style.transform = 'rotate(0deg)';
+      ring.style.transition = 'transform .8s var(--ease)';
+      ring.style.transform = 'rotate(0deg)';
       this.setLabels(-1);
       document.querySelectorAll('.sector').forEach(s => s.classList.remove('on'));
       document.getElementById('hub').classList.remove('branch');
@@ -254,14 +258,14 @@
     spin() {
       if (this.isSpinning) return;
       this.isSpinning = true;
-      const rot = document.getElementById('wheelRot');
-      const sectors = rot.querySelector('.sector').parentNode; // 包含8个sector的g
-      const zodiacRing = rot.querySelector('circle[class="ring-line"]').parentNode; // 地支环所在的g（含circle+texts）
-      const taiji = rot.querySelector('.taiji');
-
+      const { rot, ring } = this._parts();
+      /* 起始对齐：此时无选中，八卦与地支环本就应在 0° */
       rot.style.transition = 'none';
-      const start = this._currentRot || 0;
-      const totalRev = 3 + Math.random() * 2; // 3~5 圈
+      ring.style.transition = 'none';
+      rot.style.transform = 'rotate(0deg)';
+      ring.style.transform = 'rotate(0deg)';
+
+      const totalRev = 3 + Math.floor(Math.random() * 3); // 整数圈：3 / 4 / 5
       const totalDeg = totalRev * 360;
       const duration = 2500 + Math.random() * 600; // 2.5~3.1s
       const startTs = performance.now();
@@ -274,55 +278,40 @@
         const elapsed = ts - startTs;
         let p = Math.min(elapsed / duration, 1);
         p = easeInOutCubic(p);
-        const cur = start + totalDeg * p;
+        const cur = totalDeg * p;
         this._currentRot = ((cur % 360) + 360) % 360;
 
-        // 整个 wheelRot 旋转（带动地支环、太极鱼一起转）
+        /* 整盘转动：阴阳鱼随盘绕盘心原地自转，恒在中心 */
         rot.style.transform = `rotate(${cur}deg)`;
-
-        // 反向抵消地支环和太极鱼，使其视觉保持静止
-        const neg = -cur;
-        zodiacRing.style.transform = `rotate(${neg}deg)`;
-        taiji.style.transform = `rotate(${neg}deg)`;
+        /* 地支环反向抵消（绕盘心），视觉上保持静止 */
+        ring.style.transform = `rotate(${-cur}deg)`;
 
         this.setLabels(-1);
         if (p < 1) {
           this._spinAnim = requestAnimationFrame(tick);
         } else {
-          this.isSpinning = false;
-          cancelAnimationFrame(this._spinAnim);
-          this._spinAnim = null;
-          this._currentRot = 0;
-          // 恢复：整盘平滑回 0，子元素取消反向补偿
-          rot.style.transition = 'transform .4s ease-out';
-          rot.style.transform = 'rotate(0deg)';
-          zodiacRing.style.transition = 'transform .4s ease-out';
-          zodiacRing.style.transform = 'rotate(0deg)';
-          taiji.style.transition = 'transform .4s ease-out';
-          taiji.style.transform = 'rotate(0deg)';
-          this.setLabels(-1);
+          this._settle();
         }
       };
       this._spinAnim = requestAnimationFrame(tick);
     },
 
+    /* 收尾：整数圈已回到原位，此处只做对齐，故不产生倒转 */
+    _settle() {
+      this.isSpinning = false;
+      if (this._spinAnim) { cancelAnimationFrame(this._spinAnim); this._spinAnim = null; }
+      const { rot, ring } = this._parts();
+      this._currentRot = 0;
+      rot.style.transition = 'transform .45s ease-out';
+      rot.style.transform = 'rotate(0deg)';
+      ring.style.transition = 'transform .45s ease-out';
+      ring.style.transform = 'rotate(0deg)';
+      this.setLabels(-1);
+    },
+
     stopSpin() {
       if (!this.isSpinning) return;
-      this.isSpinning = false;
-      if (this._spinAnim) {
-        cancelAnimationFrame(this._spinAnim);
-        this._spinAnim = null;
-      }
-      const rot = document.getElementById('wheelRot');
-      const zodiacRing = rot.querySelector('circle[class="ring-line"]').parentNode;
-      const taiji = rot.querySelector('.taiji');
-      rot.style.transition = 'transform .5s var(--ease)';
-      zodiacRing.style.transition = 'transform .5s var(--ease)';
-      taiji.style.transition = 'transform .5s var(--ease)';
-      this._currentRot = ((this._currentRot % 360) + 360) % 360;
-      rot.style.transform = `rotate(${this._currentRot}deg)`;
-      zodiacRing.style.transform = `rotate(${-this._currentRot}deg)`;
-      taiji.style.transform = `rotate(${-this._currentRot}deg)`;
+      this._settle();
     }
   };
 
