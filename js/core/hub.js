@@ -64,21 +64,6 @@
       p.push(`<circle cx="500" cy="500" r="${R_OUT + 22}" class="ring-line strong"/>`);
       p.push(`<circle cx="500" cy="500" r="${R_OUT + 8}" class="ring-line"/>`);
       p.push(`<g class="wheel-rot" id="wheelRot">`);
-      /* 十二地支环（原二十四山装饰环从略，以求清晰） */
-      p.push(`<circle cx="500" cy="500" r="212" class="ring-line"/>`);
-      C.ZHI.forEach((z, i) => {
-        const deg = i * 30;
-        p.push(`<g transform="rotate(${deg} 500 500)"><text class="ring-txt" x="500" y="${500 - 256 + 7}" text-anchor="middle" font-size="20">${z}</text></g>`);
-      });
-      /* 盘心阴阳鱼：阳之首朝乾（先天之位在上）、阴之首朝坤（在下），
-         与盘同转，故乾恒为阳首、坤恒为阴首。 */
-      const TR = 112;
-      p.push(`<g class="taiji" aria-hidden="true">
-        <circle class="tj-yin-bg" cx="500" cy="500" r="${TR}"/>
-        <path class="tj-yang-fish" d="M500,${500 - TR} A${TR},${TR} 0 0 1 500,${500 + TR} A${TR / 2},${TR / 2} 0 0 0 500,500 A${TR / 2},${TR / 2} 0 0 1 500,${500 - TR} Z"/>
-        <circle class="tj-eye-b" cx="500" cy="${500 - TR / 2}" r="13"/>
-        <circle class="tj-eye-w" cx="500" cy="${500 + TR / 2}" r="13"/>
-      </g>`);
       /* 八卦扇区 */
       const dpath = sectorPath(R_IN, R_OUT, -23.3, 23.3);
       WHEEL_ORDER.forEach((id, i) => {
@@ -90,6 +75,22 @@
         p.push('</g>');
       });
       p.push(`</g>`);   /* /wheel-rot */
+      /* 十二地支环（原二十四山装饰环从略，以求清晰） —— 不随八卦扇区旋转，固定在盘上 */
+      p.push(`<g id="zodiacRing">`);
+      p.push(`<circle cx="500" cy="500" r="212" class="ring-line"/>`);
+      C.ZHI.forEach((z, i) => {
+        const deg = i * 30;
+        p.push(`<g transform="rotate(${deg} 500 500)"><text class="ring-txt" x="500" y="${500 - 256 + 7}" text-anchor="middle" font-size="20">${z}</text></g>`);
+      });
+      p.push(`</g>`);
+      /* 盘心阴阳鱼：固定在盘心，不随旋转 */
+      const TR = 112;
+      p.push(`<g class="taiji" id="taijiCenter" aria-hidden="true">
+        <circle class="tj-yin-bg" cx="500" cy="500" r="${TR}"/>
+        <path class="tj-yang-fish" d="M500,${500 - TR} A${TR},${TR} 0 0 1 500,${500 + TR} A${TR / 2},${TR / 2} 0 0 0 500,500 A${TR / 2},${TR / 2} 0 0 1 500,${500 - TR} Z"/>
+        <circle class="tj-eye-b" cx="500" cy="${500 - TR / 2}" r="13"/>
+        <circle class="tj-eye-w" cx="500" cy="${500 + TR / 2}" r="13"/>
+      </g>`);
       /* 八方文字另置一层（不随盘自转，恒正立） */
       p.push(`<g id="sec-labels">`);
       WHEEL_ORDER.forEach((id, i) => {
@@ -267,7 +268,7 @@
           cancelAnimationFrame(this._spinAnim);
           this._spinAnim = null;
           this._currentRot = 0;
-          rot.style.transition = 'none';
+          rot.style.transition = 'transform .4s ease-out';
           rot.style.transform = 'rotate(0deg)';
           this.setLabels(-1);
         }
