@@ -72,17 +72,19 @@
         p.push(`<g transform="rotate(${deg} 500 500)"><text class="ring-txt" x="500" y="${500 - 256 + 7}" text-anchor="middle" font-size="20">${z}</text></g>`);
       });
       p.push(`</g>`);
-      /* 盘心阴阳鱼：固定在盘心，只绕自身中心原地运动（慢速自转），绝不离开中心。
-         外层 #taijiCenter：抵消八卦公转，使其只居盘心；
-         内层 .taiji-spin：承载慢速自转，令其自己徐徐转动。
+      /* 盘心阴阳鱼：固定在盘心，只绕自身中心原地运动，绝不离开中心。
+         三层各司其职：
+           #taijiCenter 外层 —— 抵消阵盘公转，令其恒居盘心；
+           .taiji-spin  中层 —— 常驻慢速自转（24s 一周）；
+           .taiji-boost 内层 —— 点击阴阳鱼时的"慢→快→慢"自转，转毕归零，可反复触发。
          阳之首朝乾（先天之位在上）、阴之首朝坤（在下）。 */
       const TR = 112;
-      p.push(`<g class="taiji" id="taijiCenter" aria-hidden="true"><g class="taiji-spin">
+      p.push(`<g class="taiji" id="taijiCenter" aria-hidden="true"><g class="taiji-spin"><g class="taiji-boost">
         <circle class="tj-yin-bg" cx="500" cy="500" r="${TR}"/>
         <path class="tj-yang-fish" d="M500,${500 - TR} A${TR},${TR} 0 0 1 500,${500 + TR} A${TR / 2},${TR / 2} 0 0 0 500,500 A${TR / 2},${TR / 2} 0 0 1 500,${500 - TR} Z"/>
         <circle class="tj-eye-b" cx="500" cy="${500 - TR / 2}" r="13"/>
         <circle class="tj-eye-w" cx="500" cy="${500 + TR / 2}" r="13"/>
-      </g></g>`);
+      </g></g></g>`);
       /* 八卦扇区 */
       const dpath = sectorPath(R_IN, R_OUT, -23.3, 23.3);
       WHEEL_ORDER.forEach((id, i) => {
@@ -187,9 +189,15 @@
       };
     },
 
+    /* 阴阳鱼点击自转层 */
+    _taijiBoost() {
+      return document.querySelector('.taiji-boost');
+    },
+
     select(id) {
       const idx = WHEEL_ORDER.indexOf(id);
       if (idx < 0) return;
+      if (this.isSpinning) this._settle();
       this.current = id;
       const { rot, ring, taiji } = this._parts();
       const target = -idx * 45;
@@ -215,6 +223,7 @@
     },
 
     clear() {
+      if (this.isSpinning) this._settle();
       this.current = null;
       this._currentRot = 0;
       const { rot, ring, taiji } = this._parts();
@@ -262,22 +271,19 @@
       });
     },
 
-    /* ---------- 自动旋转：缓慢 → 快速 → 缓慢 → 停止 ---------- */
+    /* ---------- 点击阴阳鱼：只转阴阳鱼，阵盘（线条/扇区/地支环）一律不动 ----------
+       速度曲线：慢 → 快 → 慢（easeInOutCubic），转整数圈后归零，故落点无跳变 */
     spin() {
       if (this.isSpinning) return;
+      const boost = this._taijiBoost();
+      if (!boost) return;
       this.isSpinning = true;
-      const { rot, ring, taiji } = this._parts();
-      /* 起始对齐：此时无选中，八卦与地支环本就应在 0° */
-      rot.style.transition = 'none';
-      ring.style.transition = 'none';
-      taiji.style.transition = 'none';
-      rot.style.transform = 'rotate(0deg)';
-      ring.style.transform = 'rotate(0deg)';
-      taiji.style.transform = 'rotate(0deg)';
+      boost.style.transition = 'none';
+      boost.style.transform = 'rotate(0deg)';
 
-      const totalRev = 3 + Math.floor(Math.random() * 3); // 整数圈：3 / 4 / 5
+      const totalRev = 2 + Math.floor(Math.random() * 2); // 整数圈：2 / 3
       const totalDeg = totalRev * 360;
-      const duration = 2500 + Math.random() * 600; // 2.5~3.1s
+      const duration = 2200 + Math.random() * 500;       // 约 2.2~2.7s
       const startTs = performance.now();
 
       const easeInOutCubic = (t) => t < 0.5
@@ -285,20 +291,8 @@
         : (t - 1) * (2 * t - 2) * (2 * t - 2) + 1;
 
       const tick = (ts) => {
-        const elapsed = ts - startTs;
-        let p = Math.min(elapsed / duration, 1);
-        p = easeInOutCubic(p);
-        const cur = totalDeg * p;
-        this._currentRot = ((cur % 360) + 360) % 360;
-
-        /* 整盘转动（八卦扇区随之转动） */
-        rot.style.transform = `rotate(${cur}deg)`;
-        /* 地支环与盘心阴阳鱼反向抵消：绕盘心回转，视觉上钉住不动。
-           原点已在 CSS 中钉死为盘心，故此补偿只会原地回转，绝不产生位移。 */
-        ring.style.transform = `rotate(${-cur}deg)`;
-        taiji.style.transform = `rotate(${-cur}deg)`;
-
-        this.setLabels(-1);
+        const p = Math.min((ts - startTs) / duration, 1);
+        boost.style.transform = `rotate(${totalDeg * easeInOutCubic(p)}deg)`;
         if (p < 1) {
           this._spinAnim = requestAnimationFrame(tick);
         } else {
@@ -308,24 +302,25 @@
       this._spinAnim = requestAnimationFrame(tick);
     },
 
-    /* 收尾：整数圈已回到原位，此处只做对齐，故不产生倒转 */
-    _settle() {
+    /* 收尾：正常转完是整数圈（当前角与 0° 视觉等价），必须【无过渡】直接落位——
+       否则浏览器按角度数值从 1080° 插值回 0°，会看到反向倒转数圈。
+       仅"中途被点停"才用 smooth 缓回。阵盘始终不动。 */
+    _settle(smooth) {
       this.isSpinning = false;
       if (this._spinAnim) { cancelAnimationFrame(this._spinAnim); this._spinAnim = null; }
-      const { rot, ring, taiji } = this._parts();
-      this._currentRot = 0;
-      rot.style.transition = 'transform .45s ease-out';
-      rot.style.transform = 'rotate(0deg)';
-      ring.style.transition = 'transform .45s ease-out';
-      ring.style.transform = 'rotate(0deg)';
-      taiji.style.transition = 'transform .45s ease-out';
-      taiji.style.transform = 'rotate(0deg)';
-      this.setLabels(-1);
+      const boost = this._taijiBoost();
+      if (!boost) return;
+      if (smooth) {
+        boost.style.transition = 'transform .45s ease-out';
+      } else {
+        boost.style.transition = 'none';
+      }
+      boost.style.transform = 'rotate(0deg)';
     },
 
     stopSpin() {
       if (!this.isSpinning) return;
-      this._settle();
+      this._settle(true);
     }
   };
 

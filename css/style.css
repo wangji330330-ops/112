@@ -125,9 +125,11 @@ body.panel-open #topbar{right:var(--panel-w);}
 .wheel-rot{transform-origin:500px 500px; transform-box:view-box; transition:transform .8s var(--ease);}
 /* 地支环与盘心阴阳鱼：旋转原点都必须钉在盘心，绝不产生位移 */
 #zodiacRing,#taijiCenter{transform-origin:500px 500px; transform-box:view-box;}
-/* 阴阳鱼慢速自转：只绕盘心原地转，圆心恒不动（约 24s 一周） */
+/* 阴阳鱼常驻慢速自转：只绕盘心原地转，圆心恒不动（约 24s 一周） */
 .taiji-spin{transform-origin:500px 500px; transform-box:view-box; animation:taijiSlowSpin 24s linear infinite;}
 @keyframes taijiSlowSpin{from{transform:rotate(0deg);}to{transform:rotate(360deg);}}
+/* 阴阳鱼点击自转层：由 JS 驱动"慢→快→慢"，叠加在常驻自转之上，转毕归零 */
+.taiji-boost{transform-origin:500px 500px; transform-box:view-box;}
 .sector{cursor:pointer; outline:none;}
 .sector .sec-fill{fill:var(--surface); stroke:var(--line-strong); stroke-width:1; transition:stroke .2s;}
 .sector .sec-tint{fill:var(--cinnabar); opacity:0; transition:opacity .18s;}
