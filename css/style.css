@@ -101,8 +101,9 @@ body.panel-open #topbar{right:var(--panel-w);}
 }
 .hub-hint{
   margin:0; font-size:clamp(12px,1.05vw,13.5px); letter-spacing:.14em; color:var(--ink-4);
-  transition:opacity .3s;
+  transition:opacity .3s; display:flex; gap:12px; align-items:center; flex-wrap:wrap; justify-content:center;
 }
+.spin-hint{font-size:clamp(11px,.95vw,12.5px); color:var(--ink-4); letter-spacing:.08em;}
 #hub.shift .hub-kicker,#hub.shift .hub-hint{opacity:0;}
 
 .hub-inner{
@@ -146,6 +147,7 @@ body.panel-open #topbar{right:var(--panel-w);}
   width:38%; height:38%; cursor:pointer; border-radius:50%;
   border:1px solid var(--line-2);
   transition:border-color .2s, background .2s;
+  display:flex; align-items:center; justify-content:center;
 }
 .wheel-center:hover{border-color:var(--line-strong); background:rgba(22,25,28,.02);}
 .taiji{pointer-events:none;}
@@ -154,6 +156,20 @@ body.panel-open #topbar{right:var(--panel-w);}
 .taiji .tj-yang-fish{fill:#fff;}
 .taiji .tj-eye-b{fill:var(--ink);}
 .taiji .tj-eye-w{fill:#fff;}
+
+.spin-btn{
+  position:absolute;
+  bottom:-6px; right:-6px;
+  width:26px; height:26px; border-radius:50%;
+  border:1px solid var(--line-strong);
+  background:var(--surface);
+  color:var(--ink-2);
+  font-size:14px; line-height:1;
+  cursor:pointer; box-shadow:var(--shadow-sm);
+  transition:.16s; z-index:5;
+  display:flex; align-items:center; justify-content:center;
+}
+.spin-btn:hover{background:var(--accent-soft); color:var(--cinnabar); border-color:var(--accent-line,rgba(179,53,47,.4)); transform:scale(1.05);}
 .center-readout{
   fill:var(--ink-3); font-family:var(--font-kai); letter-spacing:.1em;
   opacity:0; transition:opacity .2s;

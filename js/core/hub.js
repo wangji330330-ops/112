@@ -42,16 +42,27 @@
     current: null,
     onOpenArt: null,
     onOpenBranch: null,
+    isSpinning: false,
+    _spinAnim: null,
+    _currentRot: 0,
 
     isMobile() { return window.matchMedia('(max-width: 940px)').matches; },
 
     /* ---------- 构建 ---------- */
     init() {
       const host = document.getElementById('wheel-host');
-      host.innerHTML = this.buildSvg() + `<div class="wheel-center" id="wheel-center"></div>`;
+      host.innerHTML = this.buildSvg() + `<div class="wheel-center" id="wheel-center"><button class="spin-btn" type="button" aria-label="自动旋转八卦盘" title="自动旋转（缓慢→快速→缓慢→停止）">↻</button></div>`;
       this.setCenter(null);
       this.buildOtherStrip();
       this.bind();
+      const hub = document.getElementById('hub');
+      const hint = hub.querySelector('.hub-hint');
+      if (hint) {
+        const tpl = document.getElementById('spin-hint');
+        if (tpl) {
+          hint.appendChild(tpl.content.cloneNode(true));
+        }
+      }
     },
 
     buildSvg() {
@@ -137,7 +148,25 @@
         });
       });
       const center = document.getElementById('wheel-center');
-      center.addEventListener('click', () => { if (this.current) this.clear(); });
+      const spinBtn = center.querySelector('.spin-btn');
+      const triggerSpin = () => {
+        if (this.isSpinning) {
+          this.stopSpin();
+          return;
+        }
+        if (this.current) { this.clear(); return; }
+        this.spin();
+      };
+      center.addEventListener('click', (e) => {
+        if (e.target === spinBtn || spinBtn.contains(e.target)) return;
+        triggerSpin();
+      });
+      if (spinBtn) {
+        spinBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          triggerSpin();
+        });
+      }
     },
 
     hotLabel(guaId, on) {
@@ -167,7 +196,10 @@
       if (idx < 0) return;
       this.current = id;
       const rot = document.getElementById('wheelRot');
-      rot.style.transform = `rotate(${-idx * 45}deg)`;
+      const target = -idx * 45;
+      this._currentRot = target;
+      rot.style.transition = 'transform .8s var(--ease)';
+      rot.style.transform = `rotate(${target}deg)`;
       this.setLabels(idx);
       document.querySelectorAll('.sector').forEach(s => s.classList.toggle('on', s.dataset.gua === id));
       window.HUB.setCenter(id);
@@ -183,6 +215,7 @@
 
     clear() {
       this.current = null;
+      this._currentRot = 0;
       document.getElementById('wheelRot').style.transform = 'rotate(0deg)';
       this.setLabels(-1);
       document.querySelectorAll('.sector').forEach(s => s.classList.remove('on'));
@@ -220,6 +253,55 @@
       bn.querySelectorAll('.bnode').forEach(el => {
         el.addEventListener('click', () => { if (!el.disabled && this.onOpenArt) this.onOpenArt(el.dataset.art); });
       });
+    },
+
+    /* ---------- 自动旋转：缓慢 → 快速 → 缓慢 → 停止 ---------- */
+    spin() {
+      if (this.isSpinning) return;
+      this.isSpinning = true;
+      const rot = document.getElementById('wheelRot');
+      rot.style.transition = 'none';
+      const start = this._currentRot || 0;
+      const totalRev = 3 + Math.random() * 2; // 3~5 圈
+      const totalDeg = totalRev * 360;
+      const duration = 2500 + Math.random() * 600; // 2.5~3.1s
+      const startTs = performance.now();
+
+      const easeInOutCubic = (t) => t < 0.5
+        ? 4 * t * t * t
+        : (t - 1) * (2 * t - 2) * (2 * t - 2) + 1;
+
+      const tick = (ts) => {
+        const elapsed = ts - startTs;
+        let p = Math.min(elapsed / duration, 1);
+        p = easeInOutCubic(p);
+        const cur = start + totalDeg * p;
+        this._currentRot = ((cur % 360) + 360) % 360;
+        rot.style.transform = `rotate(${cur}deg)`;
+        this.setLabels(-1);
+        if (p < 1) {
+          this._spinAnim = requestAnimationFrame(tick);
+        } else {
+          this.isSpinning = false;
+          cancelAnimationFrame(this._spinAnim);
+          this._spinAnim = null;
+          rot.style.transition = 'transform .8s var(--ease)';
+        }
+      };
+      this._spinAnim = requestAnimationFrame(tick);
+    },
+
+    stopSpin() {
+      if (!this.isSpinning) return;
+      this.isSpinning = false;
+      if (this._spinAnim) {
+        cancelAnimationFrame(this._spinAnim);
+        this._spinAnim = null;
+      }
+      const rot = document.getElementById('wheelRot');
+      rot.style.transition = 'transform .5s var(--ease)';
+      this._currentRot = ((this._currentRot % 360) + 360) % 360;
+      rot.style.transform = `rotate(${this._currentRot}deg)`;
     }
   };
 
