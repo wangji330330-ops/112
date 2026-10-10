@@ -173,8 +173,10 @@
       });
     },
 
-    /* 盘面三部分：整盘 wheelRot / 地支环 / 盘心阴阳鱼。
-       阴阳鱼恒不施加任何额外变换，只随盘绕盘心原地自转，故永不离开中心。 */
+    /* 盘面三部分：整盘 wheelRot / 地支环 zodiacRing / 盘心阴阳鱼 taijiCenter。
+       阴阳鱼的反向补偿必须成立，前提是它的旋转原点已被钉在盘心
+       （css: #taijiCenter{transform-origin:500px 500px; transform-box:view-box}），
+       否则会绕 (0,0) 甩出圆心。 */
     _parts() {
       return {
         rot: document.getElementById('wheelRot'),
@@ -187,14 +189,16 @@
       const idx = WHEEL_ORDER.indexOf(id);
       if (idx < 0) return;
       this.current = id;
-      const { rot, ring } = this._parts();
+      const { rot, ring, taiji } = this._parts();
       const target = -idx * 45;
       this._currentRot = target;
       rot.style.transition = 'transform .8s var(--ease)';
       rot.style.transform = `rotate(${target}deg)`;
-      /* 地支环随整盘同转，回归自身 0°（不额外补偿） */
+      /* 地支环与阴阳鱼随整盘同转（阴阳鱼随盘，故乾恒为阳首） */
       ring.style.transition = 'transform .8s var(--ease)';
       ring.style.transform = 'rotate(0deg)';
+      taiji.style.transition = 'transform .8s var(--ease)';
+      taiji.style.transform = 'rotate(0deg)';
       this.setLabels(idx);
       document.querySelectorAll('.sector').forEach(s => s.classList.toggle('on', s.dataset.gua === id));
       window.HUB.setCenter(id);
@@ -211,11 +215,13 @@
     clear() {
       this.current = null;
       this._currentRot = 0;
-      const { rot, ring } = this._parts();
+      const { rot, ring, taiji } = this._parts();
       rot.style.transition = 'transform .8s var(--ease)';
       rot.style.transform = 'rotate(0deg)';
       ring.style.transition = 'transform .8s var(--ease)';
       ring.style.transform = 'rotate(0deg)';
+      taiji.style.transition = 'transform .8s var(--ease)';
+      taiji.style.transform = 'rotate(0deg)';
       this.setLabels(-1);
       document.querySelectorAll('.sector').forEach(s => s.classList.remove('on'));
       document.getElementById('hub').classList.remove('branch');
@@ -258,12 +264,14 @@
     spin() {
       if (this.isSpinning) return;
       this.isSpinning = true;
-      const { rot, ring } = this._parts();
+      const { rot, ring, taiji } = this._parts();
       /* 起始对齐：此时无选中，八卦与地支环本就应在 0° */
       rot.style.transition = 'none';
       ring.style.transition = 'none';
+      taiji.style.transition = 'none';
       rot.style.transform = 'rotate(0deg)';
       ring.style.transform = 'rotate(0deg)';
+      taiji.style.transform = 'rotate(0deg)';
 
       const totalRev = 3 + Math.floor(Math.random() * 3); // 整数圈：3 / 4 / 5
       const totalDeg = totalRev * 360;
@@ -281,10 +289,12 @@
         const cur = totalDeg * p;
         this._currentRot = ((cur % 360) + 360) % 360;
 
-        /* 整盘转动：阴阳鱼随盘绕盘心原地自转，恒在中心 */
+        /* 整盘转动（八卦扇区随之转动） */
         rot.style.transform = `rotate(${cur}deg)`;
-        /* 地支环反向抵消（绕盘心），视觉上保持静止 */
+        /* 地支环与盘心阴阳鱼反向抵消：绕盘心回转，视觉上钉住不动。
+           原点已在 CSS 中钉死为盘心，故此补偿只会原地回转，绝不产生位移。 */
         ring.style.transform = `rotate(${-cur}deg)`;
+        taiji.style.transform = `rotate(${-cur}deg)`;
 
         this.setLabels(-1);
         if (p < 1) {
@@ -300,12 +310,14 @@
     _settle() {
       this.isSpinning = false;
       if (this._spinAnim) { cancelAnimationFrame(this._spinAnim); this._spinAnim = null; }
-      const { rot, ring } = this._parts();
+      const { rot, ring, taiji } = this._parts();
       this._currentRot = 0;
       rot.style.transition = 'transform .45s ease-out';
       rot.style.transform = 'rotate(0deg)';
       ring.style.transition = 'transform .45s ease-out';
       ring.style.transform = 'rotate(0deg)';
+      taiji.style.transition = 'transform .45s ease-out';
+      taiji.style.transform = 'rotate(0deg)';
       this.setLabels(-1);
     },
 
