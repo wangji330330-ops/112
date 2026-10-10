@@ -51,18 +51,10 @@
     /* ---------- 构建 ---------- */
     init() {
       const host = document.getElementById('wheel-host');
-      host.innerHTML = this.buildSvg() + `<div class="wheel-center" id="wheel-center"><button class="spin-btn" type="button" aria-label="自动旋转八卦盘" title="自动旋转（缓慢→快速→缓慢→停止）">↻</button></div>`;
+      host.innerHTML = this.buildSvg() + `<div class="wheel-center" id="wheel-center"></div>`;
       this.setCenter(null);
       this.buildOtherStrip();
       this.bind();
-      const hub = document.getElementById('hub');
-      const hint = hub.querySelector('.hub-hint');
-      if (hint) {
-        const tpl = document.getElementById('spin-hint');
-        if (tpl) {
-          hint.appendChild(tpl.content.cloneNode(true));
-        }
-      }
     },
 
     buildSvg() {
@@ -148,7 +140,6 @@
         });
       });
       const center = document.getElementById('wheel-center');
-      const spinBtn = center.querySelector('.spin-btn');
       const triggerSpin = () => {
         if (this.isSpinning) {
           this.stopSpin();
@@ -157,16 +148,9 @@
         if (this.current) { this.clear(); return; }
         this.spin();
       };
-      center.addEventListener('click', (e) => {
-        if (e.target === spinBtn || spinBtn.contains(e.target)) return;
+      center.addEventListener('click', () => {
         triggerSpin();
       });
-      if (spinBtn) {
-        spinBtn.addEventListener('click', (e) => {
-          e.stopPropagation();
-          triggerSpin();
-        });
-      }
     },
 
     hotLabel(guaId, on) {
@@ -285,7 +269,10 @@
           this.isSpinning = false;
           cancelAnimationFrame(this._spinAnim);
           this._spinAnim = null;
-          rot.style.transition = 'transform .8s var(--ease)';
+          this._currentRot = 0;
+          rot.style.transition = 'transform .6s var(--ease)';
+          rot.style.transform = 'rotate(0deg)';
+          this.setLabels(-1);
         }
       };
       this._spinAnim = requestAnimationFrame(tick);

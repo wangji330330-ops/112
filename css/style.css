@@ -157,19 +157,7 @@ body.panel-open #topbar{right:var(--panel-w);}
 .taiji .tj-eye-b{fill:var(--ink);}
 .taiji .tj-eye-w{fill:#fff;}
 
-.spin-btn{
-  position:absolute;
-  bottom:-6px; right:-6px;
-  width:26px; height:26px; border-radius:50%;
-  border:1px solid var(--line-strong);
-  background:var(--surface);
-  color:var(--ink-2);
-  font-size:14px; line-height:1;
-  cursor:pointer; box-shadow:var(--shadow-sm);
-  transition:.16s; z-index:5;
-  display:flex; align-items:center; justify-content:center;
-}
-.spin-btn:hover{background:var(--accent-soft); color:var(--cinnabar); border-color:var(--accent-line,rgba(179,53,47,.4)); transform:scale(1.05);}
+
 .center-readout{
   fill:var(--ink-3); font-family:var(--font-kai); letter-spacing:.1em;
   opacity:0; transition:opacity .2s;
