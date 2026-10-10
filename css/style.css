@@ -140,20 +140,24 @@ body.panel-open #topbar{right:var(--panel-w);}
 .ring-line{fill:none; stroke:#dfe3e7;}
 .ring-line.strong{stroke:var(--line-strong);}
 
-/* 盘心 */
+/* 盘心：阴阳鱼（SVG 内、随盘同转） + 不随盘转的读数 */
 .wheel-center{
   position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
-  width:38%; height:38%; display:grid; place-content:center; justify-items:center; gap:3px;
-  text-align:center; cursor:pointer; border-radius:50%;
+  width:38%; height:38%; cursor:pointer; border-radius:50%;
   border:1px solid var(--line-2);
   transition:border-color .2s, background .2s;
 }
-.wheel-center:hover{border-color:var(--line-strong); background:var(--surface-2);}
-.wheel-center .wc-trig{font-size:clamp(24px,4.2vmin,40px); line-height:1; color:var(--ink);}
-.wheel-center .wc-name{font-family:var(--font-kai); font-size:clamp(22px,3.4vmin,32px); letter-spacing:.16em; text-indent:.16em; color:var(--ink);}
-.wheel-center .wc-sub{font-size:clamp(10px,1.1vmin,12px); letter-spacing:.06em; color:var(--ink-4);}
-.wheel-center .wc-hint{font-family:var(--font-kai); font-size:clamp(15px,2vmin,19px); letter-spacing:.2em; text-indent:.2em; color:var(--ink-2);}
-.wheel-center .wc-hint + .wc-sub{margin-top:6px;}
+.wheel-center:hover{border-color:var(--line-strong); background:rgba(22,25,28,.02);}
+.taiji{pointer-events:none;}
+/* 阴（黑）为底，阳（白）鱼之头朝上即乾，阴鱼之头朝下即坤 */
+.taiji .tj-yin-bg{fill:var(--ink); stroke:var(--line-strong); stroke-width:1;}
+.taiji .tj-yang-fish{fill:#fff;}
+.taiji .tj-eye-b{fill:var(--ink);}
+.taiji .tj-eye-w{fill:#fff;}
+.center-readout{
+  fill:var(--ink-3); font-family:var(--font-kai); letter-spacing:.1em;
+  opacity:0; transition:opacity .2s;
+}
 
 /* ---------- 分支节点（卦所系之术数） ---------- */
 #branch-nodes{

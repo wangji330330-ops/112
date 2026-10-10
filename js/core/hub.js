@@ -67,6 +67,15 @@
         const deg = i * 30;
         p.push(`<g transform="rotate(${deg} 500 500)"><text class="ring-txt" x="500" y="${500 - 256 + 7}" text-anchor="middle" font-size="20">${z}</text></g>`);
       });
+      /* 盘心阴阳鱼：阳之首朝乾（先天之位在上）、阴之首朝坤（在下），
+         与盘同转，故乾恒为阳首、坤恒为阴首。 */
+      const TR = 112;
+      p.push(`<g class="taiji" aria-hidden="true">
+        <circle class="tj-yin-bg" cx="500" cy="500" r="${TR}"/>
+        <path class="tj-yang-fish" d="M500,${500 - TR} A${TR},${TR} 0 0 1 500,${500 + TR} A${TR / 2},${TR / 2} 0 0 0 500,500 A${TR / 2},${TR / 2} 0 0 1 500,${500 - TR} Z"/>
+        <circle class="tj-eye-b" cx="500" cy="${500 - TR / 2}" r="13"/>
+        <circle class="tj-eye-w" cx="500" cy="${500 + TR / 2}" r="13"/>
+      </g>`);
       /* 八卦扇区 */
       const dpath = sectorPath(R_IN, R_OUT, -23.3, 23.3);
       WHEEL_ORDER.forEach((id, i) => {
@@ -89,6 +98,8 @@
         p.push('</g>');
       });
       p.push(`</g>`);
+      /* 盘心读数（不随盘自转，恒正立） */
+      p.push(`<text class="center-readout" id="centerReadout" x="500" y="652" text-anchor="middle" font-size="20"></text>`);
       p.push('</svg>');
       return p.join('');
     },
@@ -183,17 +194,16 @@
     },
 
     setCenter(guaId, hover) {
-      const el = document.getElementById('wheel-center');
+      const el = document.getElementById('centerReadout');
       if (!el) return;
       if (!guaId) {
-        el.innerHTML = `<div class="wc-hint">八卦枢机</div><div class="wc-sub">择一卦 &nbsp;入其门</div>`;
+        el.textContent = '';
+        el.style.opacity = '0';
         return;
       }
       const g = C.GUA_BY_ID[guaId];
       const n = window.artsOfGua(guaId).length;
-      el.innerHTML = `<div class="wc-trig">${g.symbol}</div>` +
-        `<div class="wc-name">${g.name}</div>` +
-        `<div class="wc-sub">${g.nature} · ${g.dex} · ${n}门术数</div>`;
+      el.textContent = `${g.symbol} ${g.name} · ${g.nature} · ${n}门`;
       el.style.opacity = hover ? '.72' : '1';
     },
 
