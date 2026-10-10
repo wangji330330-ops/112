@@ -72,15 +72,17 @@
         p.push(`<g transform="rotate(${deg} 500 500)"><text class="ring-txt" x="500" y="${500 - 256 + 7}" text-anchor="middle" font-size="20">${z}</text></g>`);
       });
       p.push(`</g>`);
-      /* 盘心阴阳鱼：固定在盘心，只绕自身中心原地转动，绝不离开中心。
+      /* 盘心阴阳鱼：固定在盘心，只绕自身中心原地运动（慢速自转），绝不离开中心。
+         外层 #taijiCenter：抵消八卦公转，使其只居盘心；
+         内层 .taiji-spin：承载慢速自转，令其自己徐徐转动。
          阳之首朝乾（先天之位在上）、阴之首朝坤（在下）。 */
       const TR = 112;
-      p.push(`<g class="taiji" id="taijiCenter" aria-hidden="true">
+      p.push(`<g class="taiji" id="taijiCenter" aria-hidden="true"><g class="taiji-spin">
         <circle class="tj-yin-bg" cx="500" cy="500" r="${TR}"/>
         <path class="tj-yang-fish" d="M500,${500 - TR} A${TR},${TR} 0 0 1 500,${500 + TR} A${TR / 2},${TR / 2} 0 0 0 500,500 A${TR / 2},${TR / 2} 0 0 1 500,${500 - TR} Z"/>
         <circle class="tj-eye-b" cx="500" cy="${500 - TR / 2}" r="13"/>
         <circle class="tj-eye-w" cx="500" cy="${500 + TR / 2}" r="13"/>
-      </g>`);
+      </g></g>`);
       /* 八卦扇区 */
       const dpath = sectorPath(R_IN, R_OUT, -23.3, 23.3);
       WHEEL_ORDER.forEach((id, i) => {
