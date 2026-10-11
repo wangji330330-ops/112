@@ -53,6 +53,11 @@ html,body{
 input,textarea,select,option{
   -webkit-user-select:text; -moz-user-select:text; -ms-user-select:text; user-select:text;
 }
+/* 例外：结果区（断语、排盘、种子）保留可拖选，便于只摘取其中一句；
+   范围仅限这一块，八卦盘与面板其余部分仍不可选，拖选卡顿不受影响。 */
+#cast-result,#cast-result *{
+  -webkit-user-select:text; -moz-user-select:text; -ms-user-select:text; user-select:text;
+}
 body{
   margin:0;
   font-family:var(--font-sans);
