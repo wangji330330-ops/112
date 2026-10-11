@@ -78,8 +78,11 @@ a{color:var(--cinnabar);}
   position:fixed; top:0; left:0; right:0; z-index:60;
   display:flex; align-items:center; gap:16px;
   padding:14px clamp(16px,3vw,36px);
-  background:rgba(255,255,255,.94);
-  backdrop-filter:saturate(180%) blur(8px);
+  /* 原为 rgba(255,255,255,.94) + backdrop-filter 毛玻璃。
+     毛玻璃要求浏览器对顶栏覆盖区域逐帧重新模糊，而点卦瞬间顶栏正在改变宽度、
+     其下方（八卦盘）又在缩放旋转，于是每帧都要重算→最容易掉帧的一处。
+     底色本就 94% 不透明，改为纯白后观感几乎无差，却彻底去掉这笔开销。 */
+  background:var(--surface);
   border-bottom:1px solid var(--line);
   transition:right .42s var(--ease);
 }
@@ -116,10 +119,12 @@ body.panel-open #topbar{right:var(--panel-w);}
   margin:0; font-family:var(--font-kai); font-size:clamp(13px,1.35vw,16px);
   letter-spacing:.22em; color:var(--ink-3); text-indent:.22em;
   transition:opacity .3s;
+  will-change:transform;   /* 盘面缩放时它会被位移：单独成层后位移只由合成器处理，文字不再重绘 */
 }
 .hub-hint{
   margin:0; font-size:clamp(12px,1.05vw,13.5px); letter-spacing:.14em; color:var(--ink-4);
   transition:opacity .3s; display:flex; gap:12px; align-items:center; flex-wrap:wrap; justify-content:center;
+  will-change:transform;
 }
 
 #hub.shift .hub-kicker,#hub.shift .hub-hint{opacity:0;}
@@ -133,11 +138,30 @@ body.panel-open #topbar{right:var(--panel-w);}
 
 #wheel-host{
   --wheel: min(58vmin, 560px);
+  --wheel-rest: min(58vmin, 560px);   /* 盘面 SVG 的固定光栅尺寸：不随分支动画改变 */
+  --wheel-scale: 1;                   /* 分支时改由合成器缩放，避免逐帧重绘 */
   width:var(--wheel); height:var(--wheel); position:relative; justify-self:center;
   transition:width .5s var(--ease), height .5s var(--ease);
 }
-#hub.branch #wheel-host{--wheel: min(44vmin, 420px);}
-#wheel-host svg{width:100%; height:100%; overflow:visible;}
+#hub.branch #wheel-host{--wheel: min(44vmin, 420px); --wheel-scale:.7586;}   /* 44/58 */
+/* 盘面改用「绝对定位 + 固定尺寸 + transform 缩放」：
+   先前 SVG 宽高随容器从 58vmin 动画到 44vmin，浏览器每一帧都要按新尺寸
+   重新布局并重新光栅化整块盘面（含 8 个卦名与地支文字）；而上方的标语
+   又因容器高度每帧变化被反复重排重绘——这正是「点卦时标语卡顿、术数出现不丝滑」。
+   改为固定尺寸后，缩放只是合成器的纹理缩放（且只会缩小，不会糊），
+   盘面一次光栅化后整段动画不再重绘。 */
+#wheel-host svg{
+  position:absolute; left:50%; top:50%;
+  width:var(--wheel-rest); height:var(--wheel-rest);
+  /* 必须解除文件开头 img,svg{max-width:100%} 的约束：
+     否则容器缩小后 SVG 宽度会被按容器宽卡住，宽高不再相等，
+     盘面会被迫缩到更小的那条边（分支时明显偏小）。 */
+  max-width:none; max-height:none;
+  transform:translate(-50%,-50%) scale(var(--wheel-scale));
+  transition:transform .5s var(--ease);
+  will-change:transform;
+  overflow:visible;
+}
 
 /* ---------- 八卦盘 ---------- */
 .wheel-rot{transform-origin:500px 500px; transform-box:view-box; transition:transform .8s var(--ease);}
@@ -193,6 +217,7 @@ body.panel-open #topbar{right:var(--panel-w);}
   display:grid; gap:clamp(8px,1.3vh,13px); align-content:center;
   opacity:0; transform:translateX(14px); pointer-events:none;
   transition:opacity .3s var(--ease), transform .4s var(--ease);
+  will-change:opacity, transform;   /* 首次出现即预建合成层，免去动画中途才建层的抖动 */
 }
 #hub.branch #branch-nodes{opacity:1; transform:none; pointer-events:auto;}
 .bnode{
@@ -214,6 +239,7 @@ body.panel-open #topbar{right:var(--panel-w);}
   display:grid; justify-items:center; gap:8px; width:min(100%,1120px);
   padding-top:14px; border-top:1px solid var(--line);
   transition:opacity .3s;
+  will-change:transform, opacity;   /* 同标语：盘面缩放时会被位移，单独成层免重绘 */
 }
 #hub.branch #other-strip{opacity:.45;}
 .strip-head{display:flex; align-items:baseline; gap:10px; font-family:var(--font-kai); font-size:14px; letter-spacing:.12em; color:var(--ink-2);}
@@ -548,8 +574,8 @@ body.panel-open #footnote{opacity:0; transform:translateY(8px);}
   #hub.shift{padding-right:12px;}
   #hub.branch .hub-inner{grid-template-columns:auto 0px;}
   #branch-nodes{display:none;}
-  #hub #wheel-host{--wheel: min(72vmin,380px);}
-  #hub.branch #wheel-host{--wheel: min(60vmin,340px);}
+  #hub #wheel-host{--wheel: min(72vmin,380px); --wheel-rest: min(72vmin,380px); --wheel-scale:1;}
+  #hub.branch #wheel-host{--wheel: min(60vmin,340px); --wheel-scale:.8333;}   /* 60/72 */
   .strip-note{display:none;}
   #panel{
     width:100vw; height:88vh; top:auto; bottom:0;
