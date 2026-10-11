@@ -435,182 +435,311 @@
     }
   });
 
-  /* ---------- 简笔面相（本站自绘） ---------- */
-  function drawFace(cv) {
-    if (!cv || !cv.getContext) return;
+  /* ---------- 绘图公共 ---------- */
+  const INK = '#171614', RED = '#a8322d', DIM = '#6d685c';
+  const F_MAIN = '13px "Songti SC","STSong","SimSun",serif';
+  const F_TINY = '12px "Songti SC","STSong","SimSun",serif';
+
+  /* 按「逻辑坐标」绘制，并按设备像素比放大画布：高分屏下线条与文字不虚。
+     原实现直接用画布属性尺寸 1:1 绘制，在 DPR>1 的屏上会被放大而发糊。 */
+  function setupCanvas(cv, LW, LH) {
+    /* 上限 2 已足够：画布逻辑宽 560/660，而显示宽度最多 420/520，
+       2 倍设备像素即高于显示所需，再往上只是白占内存。 */
+    const dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
+    cv.width = Math.round(LW * dpr);
+    cv.height = Math.round(LH * dpr);
     const ctx = cv.getContext('2d');
-    const W = cv.width, H = cv.height, cx = W / 2;
-    const ink = '#171614', red = '#a8322d', soft = 'rgba(23,22,20,.30)', faint = 'rgba(23,22,20,.16)';
-    ctx.clearRect(0, 0, W, H);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, LW, LH);
     ctx.lineCap = 'round';
-
-    /* 脸型轮廓 */
-    ctx.strokeStyle = ink; ctx.lineWidth = 1.7;
-    ctx.beginPath();
-    ctx.moveTo(cx, 52);
-    ctx.bezierCurveTo(cx + 120, 52, cx + 142, 156, cx + 138, 246);
-    ctx.bezierCurveTo(cx + 134, 336, cx + 98, 436, cx, 494);
-    ctx.bezierCurveTo(cx - 98, 436, cx - 134, 336, cx - 138, 246);
-    ctx.bezierCurveTo(cx - 142, 156, cx - 120, 52, cx, 52);
-    ctx.closePath();
-    ctx.stroke();
-
-    /* 中轴 */
+    ctx.lineJoin = 'round';
+    return ctx;
+  }
+  /* 压在线上也读得清：先描白边再填字 */
+  function tag(ctx, text, x, y, opt) {
+    opt = opt || {};
     ctx.save();
-    ctx.setLineDash([2, 5]); ctx.strokeStyle = faint; ctx.lineWidth = 1;
-    ctx.beginPath(); ctx.moveTo(cx, 60); ctx.lineTo(cx, 486); ctx.stroke();
+    ctx.font = opt.font || F_MAIN;
+    ctx.textAlign = opt.align || 'center';
+    ctx.textBaseline = opt.baseline || 'middle';
+    const halo = opt.halo === undefined ? 3.5 : opt.halo;
+    if (halo > 0) { ctx.lineWidth = halo; ctx.strokeStyle = '#fff'; ctx.strokeText(text, x, y); }
+    ctx.fillStyle = opt.color || DIM;
+    ctx.fillText(text, x, y);
     ctx.restore();
-
-    /* 三停分界：发际 108 / 眉 222 / 鼻底 352 / 颏底 494 */
-    const lines = [[108, 112, '发际'], [222, 134, '眉'], [352, 110, '鼻底'], [494, 44, '颏底']];
+  }
+  /* 虚线 */
+  function dash(ctx, a, color, w, pattern) {
     ctx.save();
-    ctx.setLineDash([6, 5]); ctx.strokeStyle = soft; ctx.lineWidth = 1.2;
-    lines.forEach(l => { ctx.beginPath(); ctx.moveTo(cx - l[1], l[0]); ctx.lineTo(cx + l[1], l[0]); ctx.stroke(); });
+    ctx.setLineDash(pattern || [5, 5]);
+    ctx.strokeStyle = color; ctx.lineWidth = w || 1;
+    a();
     ctx.restore();
-
-    ctx.fillStyle = '#6d685c';
-    ctx.font = '13px "Songti SC","STSong","SimSun",serif';
-    ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
-    lines.forEach(l => { ctx.fillText(l[2], cx - 150, l[0]); });
-    ctx.textAlign = 'left';
-    ctx.fillStyle = red;
-    const bands = [['上停', (108 + 222) / 2], ['中停', (222 + 352) / 2], ['下停', (352 + 494) / 2]];
-    bands.forEach(b => { ctx.fillText(b[0], cx + 150, b[1]); });
-    /* 三停括线 */
-    ctx.save();
-    ctx.strokeStyle = 'rgba(168,50,45,.45)'; ctx.lineWidth = 1;
-    ctx.beginPath(); ctx.moveTo(cx + 144, 108); ctx.lineTo(cx + 144, 494); ctx.stroke();
-    bands.forEach(b => {
-      const y = b[1] === (108 + 222) / 2 ? 108 : (b[1] === (222 + 352) / 2 ? 222 : 352);
-      const y2 = b[0] === '上停' ? 222 : (b[0] === '中停' ? 352 : 494);
-      ctx.beginPath(); ctx.moveTo(cx + 138, y); ctx.lineTo(cx + 150, y);
-      ctx.moveTo(cx + 138, y2); ctx.lineTo(cx + 150, y2); ctx.stroke();
-    });
-    ctx.restore();
-
-    /* 眉（左右弧） */
-    ctx.strokeStyle = ink; ctx.lineWidth = 3.4;
-    ctx.beginPath(); ctx.moveTo(cx - 96, 216); ctx.quadraticCurveTo(cx - 62, 198, cx - 28, 214); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(cx + 96, 216); ctx.quadraticCurveTo(cx + 62, 198, cx + 28, 214); ctx.stroke();
-    /* 目 */
-    ctx.lineWidth = 1.6;
-    [[-58, 1], [58, -1]].forEach(e => {
-      ctx.beginPath(); ctx.ellipse(cx + e[0], 242, 30, 13, 0, 0, Math.PI * 2); ctx.stroke();
-      ctx.beginPath(); ctx.arc(cx + e[0] + e[1] * 2, 242, 5.5, 0, Math.PI * 2);
-      ctx.fillStyle = ink; ctx.fill();
-    });
-    /* 鼻 */
-    ctx.beginPath(); ctx.moveTo(cx - 4, 240); ctx.lineTo(cx - 8, 330); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(cx + 4, 240); ctx.lineTo(cx + 8, 330); ctx.stroke();
-    ctx.beginPath(); ctx.ellipse(cx, 340, 26, 15, 0, 0, Math.PI * 2); ctx.stroke();
-    ctx.beginPath(); ctx.arc(cx - 26, 340, 9, Math.PI * 1.6, Math.PI * 0.6); ctx.stroke();
-    ctx.beginPath(); ctx.arc(cx + 26, 340, 9, Math.PI * 1.4, Math.PI * 0.4); ctx.stroke();
-    /* 口 */
-    ctx.beginPath(); ctx.ellipse(cx, 404, 38, 15, 0, 0, Math.PI * 2); ctx.stroke();
-    ctx.strokeStyle = 'rgba(23,22,20,.45)';
-    ctx.beginPath(); ctx.moveTo(cx - 38, 404); ctx.lineTo(cx + 38, 404); ctx.stroke();
-    /* 耳 */
-    ctx.strokeStyle = ink;
-    ctx.beginPath(); ctx.ellipse(cx - 140, 250, 14, 34, 0, 0, Math.PI * 2); ctx.stroke();
-    ctx.beginPath(); ctx.ellipse(cx + 140, 250, 14, 34, 0, 0, Math.PI * 2); ctx.stroke();
-
-    /* 图注 */
-    ctx.fillStyle = '#9a9486';
-    ctx.font = '12px "Songti SC","STSong","SimSun",serif';
-    ctx.textAlign = 'center';
-    ctx.fillText('三停分界 · 五官位置 示意（本站自绘）', cx, H - 14);
   }
 
-  /* ---------- 简笔手相（本站自绘） ---------- */
-  function drawHand(cv) {
+  /* ---------- 面相：按「三停五眼」比例的分区示意（本站自绘） ---------- */
+  function drawFace(cv) {
     if (!cv || !cv.getContext) return;
-    const ctx = cv.getContext('2d');
-    const W = cv.width, H = cv.height;
-    const ink = '#171614', red = '#a8322d', soft = 'rgba(23,22,20,.32)';
-    ctx.clearRect(0, 0, W, H);
-    ctx.lineCap = 'round';
+    const LW = 560, LH = 580;
+    const ctx = setupCanvas(cv, LW, LH);
+    const cx = 280;
 
-    /* 指（圆角矩形） */
-    function finger(x, y, w, h) {
-      const r = w / 2;
-      ctx.beginPath();
-      ctx.moveTo(x, y + h);
-      ctx.lineTo(x, y + r);
-      ctx.arc(x + r, y + r, r, Math.PI, 0);
-      ctx.lineTo(x + w, y + h);
-      ctx.closePath();
-      ctx.stroke();
+    /* 三停：发际 130 / 眉 252 / 鼻底 374 / 颏底 496（每停约一二二） */
+    const Y_HAIR = 130, Y_BROW = 252, Y_NOSE = 374, Y_CHIN = 496;
+    /* 五眼：面宽 = 五倍眼宽；两眼内角之间恰为一眼宽。
+       面宽与面高之比约 1:1.45（真人约 1:1.4），旧版 1:1.57 过瘦，故显怪。 */
+    const HW_CHEEK = 150, HW_TEMPLE = 146, HW_HAIR = 136, HW_JAW = 118;
+    const EYE_DX = 60, EYE_HW = 30, Y_EYE = 268;
+
+    /* 头发（颅顶）：极淡铺底 + 发际线（中部略低，作美人尖），另添数缕发丝 */
+    function hairline() {
+      ctx.moveTo(cx - HW_HAIR, Y_HAIR);
+      ctx.quadraticCurveTo(cx, Y_HAIR + 16, cx + HW_HAIR, Y_HAIR);
     }
-    ctx.strokeStyle = ink; ctx.lineWidth = 1.6;
-    finger(206, 44, 46, 96);
-    finger(262, 26, 46, 114);
-    finger(318, 40, 46, 100);
-    finger(372, 76, 40, 64);
-
-    /* 拇指 */
-    ctx.lineWidth = 30; ctx.strokeStyle = 'rgba(23,22,20,.10)';
-    ctx.beginPath(); ctx.moveTo(160, 250); ctx.quadraticCurveTo(108, 214, 96, 160); ctx.stroke();
-    ctx.lineWidth = 1.6; ctx.strokeStyle = ink;
-    ctx.beginPath(); ctx.moveTo(158, 268); ctx.quadraticCurveTo(112, 232, 100, 172); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(140, 276); ctx.quadraticCurveTo(84, 232, 74, 168); ctx.stroke();
-
-    /* 掌轮廓 */
     ctx.beginPath();
-    ctx.moveTo(206, 140);
-    ctx.bezierCurveTo(172, 150, 156, 190, 154, 248);
-    ctx.bezierCurveTo(152, 316, 178, 382, 238, 416);
-    ctx.bezierCurveTo(302, 452, 402, 442, 456, 392);
-    ctx.bezierCurveTo(500, 350, 514, 240, 500, 164);
-    ctx.bezierCurveTo(494, 136, 476, 122, 452, 128);
-    ctx.bezierCurveTo(432, 132, 420, 138, 412, 146);
-    ctx.bezierCurveTo(392, 132, 372, 124, 350, 126);
-    ctx.bezierCurveTo(330, 118, 300, 116, 280, 120);
-    ctx.bezierCurveTo(256, 118, 226, 122, 206, 140);
+    ctx.moveTo(cx - HW_HAIR, Y_HAIR);
+    ctx.bezierCurveTo(cx - HW_HAIR - 2, 88, cx - 82, 66, cx, 66);
+    ctx.bezierCurveTo(cx + 82, 66, cx + HW_HAIR + 2, 88, cx + HW_HAIR, Y_HAIR);
+    hairline();
     ctx.closePath();
+    ctx.fillStyle = 'rgba(23,22,20,.055)';
+    ctx.fill();
+    ctx.strokeStyle = INK; ctx.lineWidth = 1.5;
+    ctx.stroke();
+    /* 发缕：沿颅顶轮廓内收的两道弧，示意发丝（放射短线会像顶饰，故不用） */
+    dash(ctx, () => {
+      [14, 28].forEach(d => {
+        ctx.beginPath();
+        ctx.moveTo(cx - (HW_HAIR - d), Y_HAIR - 2);
+        ctx.bezierCurveTo(cx - (HW_HAIR - d) - 2, 92 + d * 0.7, cx - (84 - d), 68 + d * 1.3, cx, 68 + d * 1.5);
+        ctx.bezierCurveTo(cx + (84 - d), 68 + d * 1.3, cx + (HW_HAIR - d) + 2, 92 + d * 0.7, cx + (HW_HAIR - d), Y_HAIR - 2);
+        ctx.stroke();
+      });
+    }, 'rgba(23,22,20,.18)', 1.1, [4, 5]);
+
+    /* 面廓：发际—颞—颊—下颌角—颏，再对称回到右发际 */
+    ctx.beginPath();
+    ctx.moveTo(cx - HW_HAIR, Y_HAIR);
+    ctx.bezierCurveTo(cx - HW_TEMPLE, 176, cx - HW_TEMPLE, 226, cx - HW_CHEEK, 292);
+    ctx.bezierCurveTo(cx - HW_CHEEK + 4, 340, cx - 126, 392, cx - 112, 420);   /* 下颌角 */
+    ctx.bezierCurveTo(cx - 96, 452, cx - 46, 482, cx, Y_CHIN);
+    ctx.bezierCurveTo(cx + 46, 482, cx + 96, 452, cx + 112, 420);
+    ctx.bezierCurveTo(cx + 126, 392, cx + HW_CHEEK - 4, 340, cx + HW_CHEEK, 292);
+    ctx.bezierCurveTo(cx + HW_TEMPLE, 226, cx + HW_TEMPLE, 176, cx + HW_HAIR, Y_HAIR);
+    hairline();
+    ctx.strokeStyle = INK; ctx.lineWidth = 1.7;
     ctx.stroke();
 
-    /* 七丘 */
+    /* 耳：位于眉与鼻底之间，贴于颊侧（外缘 + 耳轮） */
+    [-1, 1].forEach(s => {
+      const x0 = cx + s * (HW_CHEEK - 3), dir = s;
+      ctx.beginPath();
+      ctx.moveTo(x0, 264);
+      ctx.bezierCurveTo(x0 + dir * 22, 262, x0 + dir * 25, 302, x0 + dir * 17, 334);
+      ctx.bezierCurveTo(x0 + dir * 11, 354, x0 - dir * 1, 356, x0, 340);
+      ctx.strokeStyle = INK; ctx.lineWidth = 1.5; ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(x0 + dir * 3, 276);
+      ctx.bezierCurveTo(x0 + dir * 13, 276, x0 + dir * 14, 302, x0 + dir * 8, 320);
+      ctx.strokeStyle = 'rgba(23,22,20,.4)'; ctx.lineWidth = 1.1; ctx.stroke();
+    });
+
+    /* 中轴（虚线） */
+    dash(ctx, () => { ctx.beginPath(); ctx.moveTo(cx, 64); ctx.lineTo(cx, Y_CHIN + 6); ctx.stroke(); },
+      'rgba(23,22,20,.16)', 1, [2, 5]);
+
+    /* 眉：骑在「眉」线上 */
+    [-1, 1].forEach(s => {
+      ctx.beginPath();
+      ctx.moveTo(cx + s * 98, 254);
+      ctx.quadraticCurveTo(cx + s * 66, 236, cx + s * 32, 248);
+      ctx.strokeStyle = INK; ctx.lineWidth = 4;
+      ctx.stroke();
+      /* 眉梢略细 */
+      ctx.beginPath();
+      ctx.moveTo(cx + s * 98, 254);
+      ctx.quadraticCurveTo(cx + s * 112, 250, cx + s * 116, 244);
+      ctx.lineWidth = 2; ctx.stroke();
+    });
+
+    /* 目：上下睑合成杏仁形，内含瞳 */
+    [-1, 1].forEach(s => {
+      const ex = cx + s * EYE_DX, hh = EYE_HW * 0.42;
+      ctx.beginPath();
+      ctx.moveTo(ex - EYE_HW, Y_EYE);
+      ctx.quadraticCurveTo(ex - s * 4, Y_EYE - hh * 2.1, ex + EYE_HW, Y_EYE);
+      ctx.quadraticCurveTo(ex - s * 4, Y_EYE + hh * 1.25, ex - EYE_HW, Y_EYE);
+      ctx.strokeStyle = INK; ctx.lineWidth = 1.5; ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(ex, Y_EYE - hh * 0.2, hh * 0.8, 0, Math.PI * 2);
+      ctx.fillStyle = INK; ctx.fill();
+    });
+
+    /* 鼻：山根—鼻梁收束至鼻头，下接鼻翼与鼻孔 */
+    ctx.beginPath();
+    ctx.moveTo(cx - 6, Y_BROW + 2);
+    ctx.bezierCurveTo(cx - 9, 296, cx - 12, 330, cx - 13, 344);
+    ctx.moveTo(cx + 6, Y_BROW + 2);
+    ctx.bezierCurveTo(cx + 9, 296, cx + 12, 330, cx + 13, 344);
+    ctx.strokeStyle = 'rgba(23,22,20,.75)'; ctx.lineWidth = 1.4;
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(cx - 13, 344);
+    ctx.quadraticCurveTo(cx - 14, 361, cx, 363);
+    ctx.quadraticCurveTo(cx + 14, 361, cx + 13, 344);
+    ctx.strokeStyle = INK; ctx.lineWidth = 1.6; ctx.stroke();
+    /* 鼻翼（鼻孔不另起圈，免得像小胡子） */
+    ctx.beginPath();
+    ctx.moveTo(cx - 13, 349);
+    ctx.bezierCurveTo(cx - 26, 351, cx - 31, 362, cx - 22, Y_NOSE - 2);
+    ctx.moveTo(cx + 13, 349);
+    ctx.bezierCurveTo(cx + 26, 351, cx + 31, 362, cx + 22, Y_NOSE - 2);
+    ctx.strokeStyle = 'rgba(23,22,20,.5)'; ctx.lineWidth = 1.2; ctx.stroke();
+
+    /* 口：上下唇（上唇作唇珠），唇缝微上弯 */
+    const Y_MOUTH = 430, MW = 41;
+    ctx.beginPath();
+    ctx.moveTo(cx - MW, Y_MOUTH);
+    ctx.quadraticCurveTo(cx - MW * 0.55, Y_MOUTH - 15, cx - MW * 0.22, Y_MOUTH - 13);
+    ctx.quadraticCurveTo(cx, Y_MOUTH - 8, cx + MW * 0.22, Y_MOUTH - 13);
+    ctx.quadraticCurveTo(cx + MW * 0.55, Y_MOUTH - 15, cx + MW, Y_MOUTH);
+    ctx.strokeStyle = INK; ctx.lineWidth = 1.5; ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(cx - MW, Y_MOUTH);
+    ctx.quadraticCurveTo(cx, Y_MOUTH + 17, cx + MW, Y_MOUTH);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(cx - MW, Y_MOUTH);
+    ctx.quadraticCurveTo(cx, Y_MOUTH - 2.5, cx + MW, Y_MOUTH);
+    ctx.strokeStyle = 'rgba(23,22,20,.55)'; ctx.lineWidth = 1.1; ctx.stroke();
+
+    /* 三停分界（横虚线） */
+    dash(ctx, () => {
+      [[Y_HAIR, HW_HAIR], [Y_BROW, HW_CHEEK], [Y_NOSE, HW_CHEEK - 4], [Y_CHIN, 52]].forEach(l => {
+        ctx.beginPath(); ctx.moveTo(cx - l[1], l[0]); ctx.lineTo(cx + l[1], l[0]); ctx.stroke();
+      });
+    }, 'rgba(23,22,20,.30)', 1.2, [6, 5]);
+
+    /* 左侧界名（右对齐，避让面廓） */
+    ctx.textAlign = 'right';
+    tag(ctx, '发际', cx - HW_HAIR - 12, Y_HAIR, { color: DIM, align: 'right' });
+    tag(ctx, '眉', cx - HW_CHEEK - 8, Y_BROW, { color: DIM, align: 'right' });
+    tag(ctx, '鼻底', cx - HW_CHEEK - 8, Y_NOSE, { color: DIM, align: 'right' });
+    tag(ctx, '颏底', cx - 62, Y_CHIN, { color: DIM, align: 'right' });
+
+    /* 右侧三停括线 + 停名 */
+    const xb = cx + HW_CHEEK + 22;
+    ctx.beginPath();
+    ctx.moveTo(xb, Y_HAIR); ctx.lineTo(xb, Y_CHIN);
+    [Y_HAIR, Y_BROW, Y_NOSE, Y_CHIN].forEach(y => {
+      ctx.moveTo(xb - 9, y); ctx.lineTo(xb + 9, y);
+    });
+    ctx.strokeStyle = 'rgba(168,50,45,.5)'; ctx.lineWidth = 1;
+    ctx.stroke();
+    tag(ctx, '上停', xb + 14, (Y_HAIR + Y_BROW) / 2, { color: RED, align: 'left' });
+    tag(ctx, '中停', xb + 14, (Y_BROW + Y_NOSE) / 2, { color: RED, align: 'left' });
+    tag(ctx, '下停', xb + 14, (Y_NOSE + Y_CHIN) / 2, { color: RED, align: 'left' });
+
+    tag(ctx, '三停分界 · 五官位置 示意（本站自绘）', cx, LH - 14, { color: '#9a9486', font: F_TINY });
+  }
+
+  /* ---------- 手相：右掌（掌心向观者，拇指在左）三主线与七丘（本站自绘） ---------- */
+  function drawHand(cv) {
+    if (!cv || !cv.getContext) return;
+    const LW = 660, LH = 470;
+    const ctx = setupCanvas(cv, LW, LH);
+
+    /* 掌与四指一条连通轮廓：指端略收作锥形、指间留浅凹，
+       拇指另作一叶与掌相接，不再像旧版那样把四指画成悬在掌外的圆角矩形。 */
+    function finger(x0, x1, yTip, yBase) {
+      const tw = 5;                                          /* 指端每侧收窄，略作锥形 */
+      const tx0 = x0 + tw, tx1 = x1 - tw;
+      const r = (tx1 - tx0) / 2;
+      ctx.lineTo(tx0, yTip + r);
+      ctx.quadraticCurveTo(tx0, yTip, tx0 + r, yTip);
+      ctx.quadraticCurveTo(tx1, yTip, tx1, yTip + r);
+      ctx.lineTo(x1, yBase);
+    }
+    function notch(x0, x1, yBase) {
+      ctx.quadraticCurveTo((x0 + x1) / 2, yBase + 12, x1, yBase);
+    }
+
+    ctx.beginPath();
+    ctx.moveTo(256, 234);                                  /* 食指外根（虎口上方） */
+    finger(256, 306, 112, 232);                            /* 食指 */
+    notch(306, 310, 232);
+    finger(310, 362, 88, 236);                             /* 中指（最长） */
+    notch(362, 366, 236);
+    finger(366, 412, 100, 234);                            /* 无名指 */
+    notch(412, 416, 234);
+    finger(416, 454, 142, 244);                            /* 小指（最短） */
+    /* 掌之右缘（小指侧）下行至腕：略收，避免掌心过于浑圆 */
+    ctx.bezierCurveTo(458, 266, 462, 314, 452, 356);
+    ctx.bezierCurveTo(443, 394, 427, 420, 410, 434);
+    /* 腕 */
+    ctx.lineTo(256, 434);
+    /* 掌之左缘（拇指侧）上行 */
+    ctx.bezierCurveTo(238, 420, 226, 390, 220, 352);
+    ctx.bezierCurveTo(214, 318, 214, 288, 224, 266);
+    /* 拇指：外缘上行至指尖，再沿内缘回到虎口（指尖作圆头） */
+    ctx.bezierCurveTo(198, 252, 172, 220, 156, 190);
+    ctx.bezierCurveTo(144, 168, 138, 148, 152, 138);
+    ctx.bezierCurveTo(166, 128, 186, 142, 200, 162);
+    ctx.bezierCurveTo(216, 186, 228, 214, 240, 234);
+    ctx.quadraticCurveTo(248, 243, 256, 234);
+    ctx.closePath();
+    ctx.strokeStyle = INK; ctx.lineWidth = 1.7;
+    ctx.stroke();
+
+    /* 掌丘（七丘）：虚线圆 + 白描边名，位置依大鱼际/小鱼际与四指根 */
     const mounts = [
-      [228, 158, 27, '木星丘'], [286, 150, 25, '土星丘'], [344, 158, 25, '太阳丘'],
-      [400, 180, 23, '水星丘'], [204, 322, 44, '金星丘'], [440, 322, 38, '月丘'], [300, 240, 30, '火星丘']
+      [284, 256, 24, '木星丘'], [338, 254, 22, '土星丘'], [392, 258, 22, '太阳丘'],
+      [440, 276, 19, '水星丘'], [258, 348, 36, '金星丘'], [424, 352, 31, '月丘'],
+      [322, 306, 21, '火星丘']
     ];
-    ctx.save();
-    ctx.setLineDash([3, 4]); ctx.strokeStyle = soft; ctx.lineWidth = 1;
-    mounts.forEach(m => { ctx.beginPath(); ctx.arc(m[0], m[1], m[2], 0, Math.PI * 2); ctx.stroke(); });
-    ctx.restore();
-    ctx.fillStyle = '#6d685c';
-    ctx.font = '12px "Songti SC","STSong","SimSun",serif';
-    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    mounts.forEach(m => { ctx.fillText(m[3], m[0], m[1]); });
+    dash(ctx, () => {
+      mounts.forEach(m => { ctx.beginPath(); ctx.arc(m[0], m[1], m[2], 0, Math.PI * 2); ctx.stroke(); });
+    }, 'rgba(23,22,20,.30)', 1, [3, 4]);
+    mounts.forEach(m => tag(ctx, m[3], m[0], m[1], { color: DIM, font: F_TINY }));
 
-    /* 三主线 */
-    ctx.strokeStyle = ink; ctx.lineWidth = 2.6;
-    /* 天纹（感情线）：小指侧横弧向食指侧 */
-    ctx.beginPath(); ctx.moveTo(492, 190);
-    ctx.bezierCurveTo(412, 150, 312, 148, 210, 198); ctx.stroke();
-    /* 人纹（智慧线）：虎口斜走掌中 */
-    ctx.beginPath(); ctx.moveTo(170, 224);
-    ctx.bezierCurveTo(250, 252, 360, 250, 470, 282); ctx.stroke();
-    /* 地纹（生命线）：环大鱼际至腕 */
-    ctx.beginPath(); ctx.moveTo(174, 232);
-    ctx.bezierCurveTo(152, 306, 178, 376, 254, 406); ctx.stroke();
+    /* 三主线：天纹横弧在上、人纹自虎口斜出、地纹环大鱼际而下 */
+    ctx.strokeStyle = INK; ctx.lineWidth = 2.6;
+    /* 天纹（感情线）：小指侧掌缘起，向食指—中指根下铺开 */
+    ctx.beginPath();
+    ctx.moveTo(458, 268);
+    ctx.bezierCurveTo(418, 246, 368, 240, 320, 246);
+    ctx.bezierCurveTo(296, 249, 274, 254, 260, 250);
+    ctx.stroke();
+    /* 人纹（智慧线）：与地纹同起于虎口，斜贯掌中 */
+    ctx.beginPath();
+    ctx.moveTo(248, 278);
+    ctx.bezierCurveTo(298, 288, 350, 302, 402, 318);
+    ctx.bezierCurveTo(420, 325, 434, 332, 444, 340);
+    ctx.stroke();
+    /* 地纹（生命线）：环大鱼际而下，至腕前（须明显内收，才看得出环抱金星丘） */
+    ctx.beginPath();
+    ctx.moveTo(248, 282);
+    ctx.bezierCurveTo(238, 314, 240, 356, 256, 392);
+    ctx.bezierCurveTo(268, 416, 284, 430, 302, 436);
+    ctx.stroke();
 
-    /* 腕线 */
-    ctx.strokeStyle = 'rgba(23,22,20,.28)'; ctx.lineWidth = 1.4;
-    ctx.beginPath(); ctx.moveTo(232, 424); ctx.quadraticCurveTo(330, 448, 448, 400); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(244, 440); ctx.quadraticCurveTo(334, 460, 436, 418); ctx.stroke();
+    /* 腕线（两道） */
+    dash(ctx, () => {
+      ctx.beginPath(); ctx.moveTo(266, 414); ctx.quadraticCurveTo(336, 432, 406, 412); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(278, 428); ctx.quadraticCurveTo(340, 444, 396, 426); ctx.stroke();
+    }, 'rgba(23,22,20,.28)', 1.3, [6, 5]);
 
-    /* 三主线标注 */
-    ctx.fillStyle = red;
-    ctx.font = '13px "Songti SC","STSong","SimSun",serif';
-    ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
-    ctx.fillText('天纹', 300, 138);
-    ctx.fillText('人纹', 350, 276);
-    ctx.fillText('地纹', 190, 366);
+    /* 三主线名：移到掌外并以引线指认，避免与丘位虚线圆、主线互相压字 */
+    function leader(x1, y1, x2, y2, text, align) {
+      ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2);
+      ctx.strokeStyle = 'rgba(168,50,45,.55)'; ctx.lineWidth = 1;
+      ctx.stroke();
+      tag(ctx, text, align === 'right' ? x2 - 6 : x2 + 6, y2, { color: RED, align: align || 'left' });
+    }
+    leader(456, 262, 492, 262, '天纹', 'left');
+    leader(444, 334, 492, 334, '人纹', 'left');
+    leader(246, 372, 208, 372, '地纹', 'right');
 
-    ctx.fillStyle = '#9a9486';
-    ctx.font = '12px "Songti SC","STSong","SimSun",serif';
-    ctx.textAlign = 'center';
-    ctx.fillText('左掌示意：三主线与七丘（本站自绘）', W / 2, H - 12);
+    tag(ctx, '右掌示意：三主线与七丘（本站自绘）', LW / 2, LH - 12, { color: '#9a9486', font: F_TINY });
   }
 })();
