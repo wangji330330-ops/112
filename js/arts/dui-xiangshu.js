@@ -643,90 +643,104 @@
     tag(ctx, '三停分界 · 五官位置 示意（本站自绘）', cx, LH - 14, { color: '#9a9486', font: F_TINY });
   }
 
-  /* ---------- 手相：右掌（掌心向观者，拇指在左）三主线与七丘（本站自绘） ---------- */
+  /* ---------- 手相：右掌（掌心向观者，拇指在左）三主线与七丘（本站自绘） ----------
+     掌形不再是硬凑的贝塞尔：先按「标准手掌象形」定出四指一拇指的骨架，
+     再用 Moore 邻域法把其外轮廓描摹成 70 个关键点（指尖最圆处亦在内），
+     写死在此处——既不依赖运行时字体（缺字会变方框），也不含任何字体的曲线数据。
+     关键点已换算到 660×470 画布：手高 380、底边 y=430、水平居中于 x=330。
+     经此描摹，中指最长（指尖 y≈50）、食指 65、无名指 71、小指 138、拇指在左，
+     比例与真手一致；先前手工调参四版都难兼顾「掌不过宽」与「指不发尖」。 */
+  const HAND_OUTLINE = [
+    330,50, 337,50, 346,54, 351,59, 354,66, 355,222, 359,228, 366,228, 370,223,
+    370,93, 374,81, 380,75, 389,71, 402,72, 408,75, 413,81, 416,88, 416,228,
+    418,233, 421,236, 425,237, 428,236, 431,230, 431,157, 434,148, 446,140,
+    459,138, 466,141, 472,146, 477,156, 477,324, 475,337, 469,357, 456,382,
+    440,401, 419,415, 397,425, 383,429, 367,430, 339,428, 309,415, 291,404,
+    265,378, 190,292, 184,281, 183,277, 186,268, 191,264, 198,260, 204,260,
+    220,265, 250,283, 250,85, 255,73, 259,69, 266,65, 276,65, 285,68, 290,73,
+    294,81, 295,229, 295,232, 303,237, 306,237, 311,233, 313,227, 313,67,
+    317,58, 321,54, 328,51
+  ];
+  /* 以「相邻点中点」为端点、原关键点为控制点作二次曲线：
+     折线即刻变光滑，指尖自然浑圆。 */
+  function smoothClose(ctx, flat) {
+    const n = flat.length / 2;
+    const p = i => [flat[((i % n) + n) % n * 2], flat[((i % n) + n) % n * 2 + 1]];
+    const mid = (a, b) => [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
+    const s = mid(p(n - 1), p(0));
+    ctx.beginPath();
+    ctx.moveTo(s[0], s[1]);
+    for (let i = 0; i < n; i++) {
+      const c = p(i), m = mid(c, p(i + 1));
+      ctx.quadraticCurveTo(c[0], c[1], m[0], m[1]);
+    }
+    ctx.closePath();
+  }
+
   function drawHand(cv) {
     if (!cv || !cv.getContext) return;
     const LW = 660, LH = 470;
     const ctx = setupCanvas(cv, LW, LH);
 
-    /* 掌与四指一条连通轮廓：指端略收作锥形、指间留浅凹，
-       拇指另作一叶与掌相接，不再像旧版那样把四指画成悬在掌外的圆角矩形。 */
-    function finger(x0, x1, yTip, yBase) {
-      const tw = 5;                                          /* 指端每侧收窄，略作锥形 */
-      const tx0 = x0 + tw, tx1 = x1 - tw;
-      const r = (tx1 - tx0) / 2;
-      ctx.lineTo(tx0, yTip + r);
-      ctx.quadraticCurveTo(tx0, yTip, tx0 + r, yTip);
-      ctx.quadraticCurveTo(tx1, yTip, tx1, yTip + r);
-      ctx.lineTo(x1, yBase);
-    }
-    function notch(x0, x1, yBase) {
-      ctx.quadraticCurveTo((x0 + x1) / 2, yBase + 12, x1, yBase);
-    }
-
-    ctx.beginPath();
-    ctx.moveTo(256, 234);                                  /* 食指外根（虎口上方） */
-    finger(256, 306, 112, 232);                            /* 食指 */
-    notch(306, 310, 232);
-    finger(310, 362, 88, 236);                             /* 中指（最长） */
-    notch(362, 366, 236);
-    finger(366, 412, 100, 234);                            /* 无名指 */
-    notch(412, 416, 234);
-    finger(416, 454, 142, 244);                            /* 小指（最短） */
-    /* 掌之右缘（小指侧）下行至腕：略收，避免掌心过于浑圆 */
-    ctx.bezierCurveTo(458, 266, 462, 314, 452, 356);
-    ctx.bezierCurveTo(443, 394, 427, 420, 410, 434);
-    /* 腕 */
-    ctx.lineTo(256, 434);
-    /* 掌之左缘（拇指侧）上行 */
-    ctx.bezierCurveTo(238, 420, 226, 390, 220, 352);
-    ctx.bezierCurveTo(214, 318, 214, 288, 224, 266);
-    /* 拇指：外缘上行至指尖，再沿内缘回到虎口（指尖作圆头） */
-    ctx.bezierCurveTo(198, 252, 172, 220, 156, 190);
-    ctx.bezierCurveTo(144, 168, 138, 148, 152, 138);
-    ctx.bezierCurveTo(166, 128, 186, 142, 200, 162);
-    ctx.bezierCurveTo(216, 186, 228, 214, 240, 234);
-    ctx.quadraticCurveTo(248, 243, 256, 234);
-    ctx.closePath();
+    /* 掌形轮廓 */
+    smoothClose(ctx, HAND_OUTLINE);
     ctx.strokeStyle = INK; ctx.lineWidth = 1.7;
     ctx.stroke();
 
-    /* 掌丘（七丘）：虚线圆 + 白描边名，位置依大鱼际/小鱼际与四指根 */
+    /* 指节褶纹：四指各两道，位在指中点与上段 */
+    ctx.strokeStyle = 'rgba(23,22,20,.30)'; ctx.lineWidth = 1;
+    [[250, 295, 65, 232], [313, 355, 50, 227], [370, 416, 71, 228], [431, 477, 138, 230]].forEach(f => {
+      [0.42, 0.19].forEach(k => {
+        const y = f[2] + (f[3] - f[2]) * k;
+        ctx.beginPath();
+        ctx.moveTo(f[0] + 9, y);
+        ctx.quadraticCurveTo((f[0] + f[1]) / 2, y + 8, f[1] - 9, y);
+        ctx.stroke();
+      });
+    });
+    /* 拇指关节纹 */
+    ctx.beginPath();
+    ctx.moveTo(196, 272);
+    ctx.quadraticCurveTo(206, 280, 216, 288);
+    ctx.stroke();
+
+    /* 掌丘（七丘）：虚线圆 + 白描边名。圆径与浓度收小，
+       让掌形与三主线先读出来，丘位只作淡淡注记。 */
     const mounts = [
-      [284, 256, 24, '木星丘'], [338, 254, 22, '土星丘'], [392, 258, 22, '太阳丘'],
-      [440, 276, 19, '水星丘'], [258, 348, 36, '金星丘'], [424, 352, 31, '月丘'],
-      [322, 306, 21, '火星丘']
+      [272, 282, 16, '木星丘'], [334, 278, 15, '土星丘'], [393, 286, 15, '太阳丘'],
+      [452, 306, 14, '水星丘'], [270, 356, 24, '金星丘'], [428, 362, 25, '月丘'],
+      [340, 322, 16, '火星丘']
     ];
     dash(ctx, () => {
       mounts.forEach(m => { ctx.beginPath(); ctx.arc(m[0], m[1], m[2], 0, Math.PI * 2); ctx.stroke(); });
-    }, 'rgba(23,22,20,.30)', 1, [3, 4]);
+    }, 'rgba(23,22,20,.22)', 1, [3, 5]);
     mounts.forEach(m => tag(ctx, m[3], m[0], m[1], { color: DIM, font: F_TINY }));
 
     /* 三主线：天纹横弧在上、人纹自虎口斜出、地纹环大鱼际而下 */
     ctx.strokeStyle = INK; ctx.lineWidth = 2.6;
-    /* 天纹（感情线）：小指侧掌缘起，向食指—中指根下铺开 */
+    /* 天纹（感情线）：自小指侧掌缘起，向食指根下上扬（弧形，非直线） */
     ctx.beginPath();
-    ctx.moveTo(458, 268);
-    ctx.bezierCurveTo(418, 246, 368, 240, 320, 246);
-    ctx.bezierCurveTo(296, 249, 274, 254, 260, 250);
+    ctx.moveTo(474, 300);
+    ctx.bezierCurveTo(440, 262, 388, 242, 340, 244);
+    ctx.bezierCurveTo(310, 246, 284, 246, 266, 240);
     ctx.stroke();
-    /* 人纹（智慧线）：与地纹同起于虎口，斜贯掌中 */
+    /* 人纹（智慧线）：与地纹同起于虎口，斜贯掌中，中段微隆 */
     ctx.beginPath();
-    ctx.moveTo(248, 278);
-    ctx.bezierCurveTo(298, 288, 350, 302, 402, 318);
-    ctx.bezierCurveTo(420, 325, 434, 332, 444, 340);
+    ctx.moveTo(262, 286);
+    ctx.bezierCurveTo(302, 296, 336, 296, 374, 312);
+    ctx.bezierCurveTo(408, 326, 438, 344, 462, 354);
     ctx.stroke();
-    /* 地纹（生命线）：环大鱼际而下，至腕前（须明显内收，才看得出环抱金星丘） */
+    /* 地纹（生命线）：环大鱼际而下，至腕前 */
     ctx.beginPath();
-    ctx.moveTo(248, 282);
-    ctx.bezierCurveTo(238, 314, 240, 356, 256, 392);
-    ctx.bezierCurveTo(268, 416, 284, 430, 302, 436);
+    ctx.moveTo(264, 290);
+    ctx.bezierCurveTo(250, 326, 254, 370, 272, 402);
+    ctx.bezierCurveTo(284, 416, 298, 424, 314, 428);
     ctx.stroke();
 
-    /* 腕线（两道） */
+    /* 腕纹（两道） */
     dash(ctx, () => {
-      ctx.beginPath(); ctx.moveTo(266, 414); ctx.quadraticCurveTo(336, 432, 406, 412); ctx.stroke();
-      ctx.beginPath(); ctx.moveTo(278, 428); ctx.quadraticCurveTo(340, 444, 396, 426); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(300, 404); ctx.quadraticCurveTo(362, 422, 424, 400); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(312, 418); ctx.quadraticCurveTo(366, 434, 414, 414); ctx.stroke();
     }, 'rgba(23,22,20,.28)', 1.3, [6, 5]);
 
     /* 三主线名：移到掌外并以引线指认，避免与丘位虚线圆、主线互相压字 */
@@ -736,9 +750,9 @@
       ctx.stroke();
       tag(ctx, text, align === 'right' ? x2 - 6 : x2 + 6, y2, { color: RED, align: align || 'left' });
     }
-    leader(456, 262, 492, 262, '天纹', 'left');
-    leader(444, 334, 492, 334, '人纹', 'left');
-    leader(246, 372, 208, 372, '地纹', 'right');
+    leader(478, 292, 514, 292, '天纹', 'left');
+    leader(464, 352, 514, 352, '人纹', 'left');
+    leader(258, 382, 214, 382, '地纹', 'right');
 
     tag(ctx, '右掌示意：三主线与七丘（本站自绘）', LW / 2, LH - 12, { color: '#9a9486', font: F_TINY });
   }
