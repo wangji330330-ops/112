@@ -200,8 +200,8 @@
         : '';
       $('#panel-body').innerHTML =
         `<div class="art-body">
-           ${U.sec('源流与原理', art.intro || '')}
-           ${U.sec('起占方式', (art.method || '') + formHtml)}
+           ${U.sec('源流与原理', art.intro || '', 'sec-box')}
+           ${U.sec('起占方式', (art.method || '') + formHtml, 'sec-box')}
            <div class="sec">
              <div class="btn-row">
                <button class="btn-ink" id="btn-cast">起 课</button>

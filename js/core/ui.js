@@ -25,8 +25,8 @@ window.CORE = window.CORE || {};
   U.dot = function (wx) { return `<span class="wx-dot" style="background:${C.WX_COLOR[wx] || '#999'}"></span>`; };
 
   /* ---------- 结构块 ---------- */
-  U.sec = function (title, html) {
-    return `<section class="sec"><h3>${title}</h3>${html}</section>`;
+  U.sec = function (title, html, cls) {
+    return `<section class="sec${cls ? ' ' + cls : ''}"><h3>${title}</h3>${html}</section>`;
   };
   U.card = function (title, html, sub) {
     const h = title ? `<h4>${title}${sub ? `<span class="sub">${sub}</span>` : ''}</h4>` : '';

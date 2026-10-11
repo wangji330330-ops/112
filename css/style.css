@@ -303,6 +303,20 @@ body.panel-open #topbar{right:var(--panel-w);}
   content:""; position:absolute; left:0; top:.45em; width:3px; height:.95em;
   background:var(--cinnabar); border-radius:2px;
 }
+/* 「源流与原理」「起占方式」各自框住：圆润方框 */
+.sec.sec-box{
+  border:1px solid var(--line);
+  border-radius:16px;
+  background:var(--surface-2);
+  padding:15px 17px 5px;
+  box-shadow:var(--shadow-sm);
+}
+.sec.sec-box > h3{
+  margin:0 0 13px;
+  padding-bottom:9px;
+  border-bottom:1px solid var(--line-2);
+}
+.sec.sec-box:last-child{margin-bottom:0;}
 .sec p{margin:0 0 11px; font-size:14px; line-height:1.85; color:var(--ink-2); text-align:justify;}
 .sec ul{margin:0 0 11px; padding-left:1.2em; font-size:13.5px; line-height:1.85; color:var(--ink-2);}
 .sec li{margin-bottom:5px;}
