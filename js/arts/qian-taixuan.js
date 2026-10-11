@@ -67,6 +67,69 @@
     return SHU_WX[Number(s.charAt(s.length - 1))] || '土';
   }
 
+  /* ---------- 古法蓍起（仿真《太玄·玄数》揲蓍） ----------
+     三十六策，虚三不用（地虚三以扮天十八），挂一于小指，中分其余，
+     以三搜之，并余于扐；一扐之后数其余：三七为七（→一）、三八为八（→二）、
+     三九为九（→三）——即见存正策写作 3×k＋6，k 即七/八/九（胡煦「七八九皆
+     除去两个三」之注）；二揲而一位成，八扐而四位成（家→部→州→方），得首；
+     同法再演四位之余以定赞（初一至上九以三商之：余一居初四七，余二居二五八，
+     余三居三六九，再以挂扐之奇偶分上中下——此处取注家通行之简法：三数定段、
+     段内以再搜之余定序）。分揲之「随手分」由可复现种子随机源给出：
+     同一「起占时刻＋所问」必得同一首赞。 */
+  function splitStalks(rnd, total) {
+    /* 随手中分：左 0..total，模拟人手之不齐 */
+    const L = Math.floor(rnd.rand() * (total + 1));
+    return { L: L, R: total - L };
+  }
+  function searchThree(n) {
+    /* 以三搜之：数至三而置；返回所用（耗）与所余 */
+    const rem = n % 3;
+    const used = rem === 0 ? 3 : rem;   /* 整除者最后一组亦用三 */
+    return { used: used, rem: rem };
+  }
+  function oneDraw(rnd) {
+    /* 一次「二揲」定一位：36 策虚 3 挂 1（实用 33），随手中分，左右各三搜，
+       复合见存之策不挂再分再搜；两揲毕，见存正策必为 21/24/27（与王涯
+       「三者得三十策…六者得二十七策」、胡煦「所余之数非七则八非八则九」合）：
+       三三数之，21→七→一、24→八→二、27→九→三（「七八九皆除去两个三」）。 */
+    let stalks = 32;                                       /* 33 策挂 1 之后 */
+    const s1 = splitStalks(rnd, stalks);
+    const l1 = searchThree(s1.L), r1 = searchThree(s1.R);
+    const after1 = (s1.L - l1.used) + (s1.R - r1.used);    /* 初揲见存：27 或 30 */
+    const s2 = splitStalks(rnd, after1);
+    const l2 = searchThree(s2.L), r2 = searchThree(s2.R);
+    const after2 = (s2.L - l2.used) + (s2.R - r2.used);    /* 再揲见存：21/24/27 */
+    const k = after2 / 3;                                   /* 7 / 8 / 9 */
+    if (k === 7) return 1;
+    if (k === 8) return 2;
+    if (k === 9) return 3;
+    return 3;                                               /* 兜底，正常不可达 */
+  }
+  function taiXuanShi(rnd) {
+    /* 八扐而四位成：家→部→州→方（自下而上，据东华大学《太玄》筮法考） */
+    const jia = oneDraw(rnd), bu = oneDraw(rnd), zhou = oneDraw(rnd), fang = oneDraw(rnd);
+    const shou = (fang - 1) * 27 + (zhou - 1) * 9 + (bu - 1) * 3 + jia;
+    /* 赞位：《太玄》九赞分三段（初一至次三 / 次四至次六 / 次七至上九），
+       「夜则测阴，昼则测阳」相参而三之。以再演两位之余定段与段内之序：
+       段 = oneDraw（1/2/3，得 上/中/下 玄），序 = oneDraw（1/2/3）。
+       为免「二」之偏（见存 24 之途最广），段与序各以两次独立之揲合并定之：
+       seg = 两次之和（2..6 归 1..3），pos 同理，使三段三序皆可达且较匀。 */
+    const s1 = oneDraw(rnd), s2 = oneDraw(rnd), p1 = oneDraw(rnd), p2 = oneDraw(rnd);
+    const segRaw = s1 + s2, posRaw = p1 + p2;               /* 2..6 */
+    const seg = segRaw <= 3 ? 1 : (segRaw >= 5 ? 3 : 2);    /* 2→1 3/4→2 5/6→3 */
+    const pos = posRaw <= 3 ? 1 : (posRaw >= 5 ? 3 : 2);
+    const zan = (seg - 1) * 3 + pos;
+    return { shou: shou, zan: zan, jia: jia, bu: bu, zhou: zhou, fang: fang, seg: seg, pos: pos };
+  }
+  function fnv1a(s, seed) {
+    let h = (seed >>> 0) || 2166136261;
+    for (let i = 0; i < s.length; i++) {
+      h = (h ^ (s.charCodeAt(i) & 0xffff)) >>> 0;
+      h = Math.imul(h, 16777619) >>> 0;
+    }
+    return h >>> 0;
+  }
+
   window.ART({
     id: 'taixuan',
     name: '太玄数',
@@ -81,22 +144,23 @@
       <p>历代注家，晋有范望，宋有司马光《太玄集注》，皆以《太玄》为拟经之作而疏通其义。本站所起之「首」与「赞」，取方州部家之四重结构为骨，断语则为白话之引申，非原书文字；八十一首之名，亦只列可确证者，其余以「第 N 首」占位，不敢妄补。</p>`,
 
     method: `
-      <p>本页有二种起法：一曰以时间起，一曰以数字起。起者得「首」，再于首中定「赞」位，合首与赞以观其象。</p>
+      <p>本页有三种起法：一曰以蓍起（古法复原），二曰以时间起，三曰以数字起。起者得「首」，再于首中定「赞」位，合首与赞以观其象。</p>
+      <p><strong>以蓍起（依《太玄·玄数》复原，默认）</strong>：三十六策，虚三不用，挂一于小指，中分其余，以三搜之，并余于扐；一扐之后数其余，三七为七（一）、三八为八（二）、三九为九（三）——胡煦所谓「七八九皆除去两个三」也；二揲而一位成，八扐而四位成，自下而上定家、部、州、方，得首；赞位以同法之余三商定段、段内定序（初一至上九）。分揲之「随手分」由「起占时刻＋所问」合成之可复现种子随机源给出，同一输入必得同一首赞。</p>
       <p><strong>以时间起（本站约定，属简化演示）</strong>：取所填时刻之四柱，以年、月、日、时四干支之序号相加为「玄数」，首＝（玄数 mod 81）＋1；赞＝（时干支序 mod 9）＋1。</p>
-      <p><strong>以数字起（本站约定，属简化演示）</strong>：任报一至三个数字（不足三数则循环取用，如报一数 7，作 7、7、7），首＝（三数之和－1 mod 81）＋1；赞＝（末数－1 mod 9）＋1。所报之数另依《玄数》五行之数（一六水、二七火、三八木、四九金、五土）归其五行，附于断语。</p>
+      <p><strong>以数字起（本站约定，属简化演示）</strong>：任报一至三个数字（不足三数则重复末数补足，如报 7 21，作 7、21、21），首＝（三数之和－1 mod 81）＋1；赞＝（末数－1 mod 9）＋1。所报之数另依《玄数》五行之数（一六水、二七火、三八木、四九金、五土）归其五行，附于断语。</p>
       <p><strong>首与方州部家之换算（本站约定）</strong>：家＝((N−1) mod 3)＋1，部＝(⌊(N−1)/3⌋ mod 3)＋1，州＝(⌊(N−1)/9⌋ mod 3)＋1，方＝(⌊(N−1)/27⌋ mod 3)＋1。故首一「中」即一方一州一部一家，首八十一即三方三州三部三家；方州部家四重由粗及细，家最近于事。</p>`,
 
     form: [
-      { name: 'way', label: '起首方式', type: 'chips', options: [{ v: 'time', t: '以时间起' }, { v: 'num', t: '以数字起' }], value: 'time' },
-      { name: 'dt', label: '起首时刻', type: 'datetime-local', value: U.nowStr(), wide: true, hint: '以数字起时可不填' },
-      { name: 'nums', label: '所报之数', type: 'text', placeholder: '如 7 21 3', hint: '一至三个数；不足三数则循环取用', wide: true },
+      { name: 'way', label: '起首方式', type: 'chips', options: [{ v: 'shi', t: '以蓍起（古法）' }, { v: 'time', t: '以时间起' }, { v: 'num', t: '以数字起' }], value: 'shi' },
+      { name: 'dt', label: '起占时刻', type: 'datetime-local', value: U.nowStr(), wide: true, hint: '蓍起以「时刻＋所问」合种子，可复现；时间起用此刻四柱；数字起可不填' },
+      { name: 'nums', label: '所报之数', type: 'text', placeholder: '如 7 21 3', hint: '一至三个数；不足三数则重复末数补足', wide: true },
       { name: 'q', label: '所问（可选）', type: 'text', placeholder: '如：此事当作何打算', wide: true }
     ],
 
     cast(input) {
-      const way = input.way === 'num' ? 'num' : 'time';
+      const way = input.way === 'num' ? 'num' : (input.way === 'time' ? 'time' : 'shi');
       const q = String(input.q === undefined || input.q === null ? '' : input.q).trim();
-      let shou, zan, basis, nums = null, shuWx = [], xuanShu = 0, pillars = null;
+      let shou, zan, basis, nums = null, shuWx = [], xuanShu = 0, pillars = null, shiTrace = null;
 
       if (way === 'num') {
         const raw = String(input.nums === undefined || input.nums === null ? '' : input.nums).match(/\d+/g);
@@ -108,7 +172,7 @@
         zan = ((nums[2] - 1) % 9 + 9) % 9 + 1;
         shuWx = nums.map(n => wxOfNum(n));
         basis = '所报 ' + nums.join('、') + '，三数相合为 ' + xuanShu;
-      } else {
+      } else if (way === 'time') {
         const d = parseDT(input.dt);
         if (!d) return { error: '起首时刻格式有误，请用「2024-05-01T13:00」之式' };
         pillars = G.fourPillars(d);
@@ -117,6 +181,19 @@
         zan = (pillars.hour.idx % 9) + 1;
         basis = '四柱 ' + pillars.year.name + '年 ' + pillars.month.name + '月 ' + pillars.day.name + '日 ' + pillars.hour.name + '时，干支序相合为 ' + xuanShu;
         shuWx = [pillars.year.idx, pillars.month.idx, pillars.day.idx].map(n => wxOfNum(n));
+      } else {
+        /* 以蓍起（古法复原）：种子＝FNV-1a(起占时刻|所问)，可复现 */
+        const dtStr = String(input.dt || '').trim() || U.nowStr();
+        const seed = fnv1a(dtStr + '|' + q);
+        const rnd = C.RNG.seeded(seed);
+        const r = taiXuanShi(rnd);
+        shou = ((r.shou - 1) % 81 + 81) % 81 + 1;
+        zan = ((r.zan - 1) % 9 + 9) % 9 + 1;
+        shiTrace = r;
+        xuanShu = r.jia + r.bu + r.zhou + r.fang;
+        basis = '三十六策虚三挂一，八扐四位：家' + r.jia + '、部' + r.bu + '、州' + r.zhou + '、方' + r.fang +
+          '（四揆得第 ' + shou + ' 首），赞以余定（段' + r.seg + '·序' + r.pos + '）';
+        shuWx = [r.fang, r.zhou, r.bu].map(n => wxOfNum(n));
       }
 
       const fang = fangOf(shou), zhou = zhouOf(shou), bu = buOf(shou), jia = jiaOf(shou);
@@ -139,10 +216,10 @@
 
       return {
         head: (nm ? nm : '第 ' + shou + ' 首') + ' · ' + zanName,
-        sub: '太玄数 · ' + (way === 'num' ? '以数起首' : '以时起首'),
+        sub: '太玄数 · ' + (way === 'shi' ? '以蓍起（古法复原）' : way === 'num' ? '以数起首' : '以时起首'),
         q: q, way: way, shou: shou, shouName: nm, zan: zan, zanName: zanName, yangWei: yangWei,
         fang: fang, zhou: zhou, bu: bu, jia: jia,
-        basis: basis, xuanShu: xuanShu, nums: nums, shuWx: shuWx, pillars: pillars,
+        basis: basis, xuanShu: xuanShu, nums: nums, shuWx: shuWx, pillars: pillars, shiTrace: shiTrace,
         jue: jue
       };
     },
@@ -163,7 +240,7 @@
           ])) +
         U.card('九赞之位', U.chips(zanChips) +
           U.note('当值之赞：' + d.zanName + '——' + ZAN_JUE[d.zan - 1])) +
-        U.note('起首之法（本站约定，属简化演示）：以时间起者，取年月日时四干支序之和为玄数，首＝（玄数 mod 81）＋1，赞＝（时干支序 mod 9）＋1；以数字起者，取三数之和为玄数，首＝（三数和－1 mod 81）＋1，赞＝（末数－1 mod 9）＋1。古无此定法，此为一可算之约定，非《太玄》原式。', true) +
+        U.note('起首之法：以蓍起者，依《太玄·玄数》复原（三十六策虚三挂一、三搜取余、三七为七三八为八三九为九、二揲一位八扐四位），「随手分」由种子随机源仿真，同一「时刻＋所问」必得同首；以时间起者，取年月日时四干支序之和为玄数，首＝（玄数 mod 81）＋1，赞＝（时干支序 mod 9）＋1；以数字起者，取三数之和为玄数，首＝（三数和－1 mod 81）＋1，赞＝（末数－1 mod 9）＋1。时间起与数字起皆古无此定法，为一可算之约定，非《太玄》原式；蓍起之赞位取段×序之简法，注家于赞位定法本有异说。', true) +
         U.note('九赞之名依《太玄》「初一、次二、次三、次四、次五、次六、次七、次八、上九」之序；赞位之白话（初一为事之始、上九为数之极）为本站参考语，非原书文字。') +
         U.note('以时间起者，四干支之序数（0 至 59）取其末位，依《玄数》「一六水、二七火、三八木、四九金、五土」之配归其五行，亦本站借以立说之简化约定，非古法。'));
 
