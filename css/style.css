@@ -180,7 +180,7 @@ body.panel-open #topbar{right:var(--panel-w);}
 }
 
 /* ---------- 八卦盘 ---------- */
-.wheel-rot{transform-origin:500px 500px; transform-box:view-box; transition:transform .8s var(--ease);}
+.wheel-rot{transform-origin:500px 500px; transform-box:view-box; will-change:transform;}
 /* 地支环与盘心阴阳鱼：旋转原点都必须钉在盘心，绝不产生位移 */
 #zodiacRing,#taijiCenter{transform-origin:500px 500px; transform-box:view-box;}
 /* 阴阳鱼常驻慢速自转：只绕盘心原地转，圆心恒不动（约 24s 一周） */
@@ -195,7 +195,9 @@ body.panel-open #topbar{right:var(--panel-w);}
 .sector.on .sec-tint{opacity:.1;}
 .sector:focus-visible .sec-tint{opacity:.12;}
 .sector:hover .sec-fill,.sector.on .sec-fill{stroke:var(--cinnabar);}
-.sec-label{pointer-events:none; transition:transform .8s var(--ease);}
+/* 卦名与爻的落点由 JS 按盘角逐帧反算（随盘划弧、恒正立），
+   故此处不能用 CSS 过渡：每帧改 transform 会被过渡反复插值而成拖影。 */
+.sec-label{pointer-events:none; will-change:transform;}
 .sec-label .sec-trig{font-family:var(--font-song); fill:var(--ink); transition:fill .18s;}
 .sec-label .sec-name{font-family:var(--font-kai); fill:var(--ink); transition:fill .18s;}
 .sec-label.hot .sec-trig,.sec-label.on .sec-trig,

@@ -25,10 +25,8 @@
       `L${x2.toFixed(2)},${y2.toFixed(2)} A${r0},${r0} 0 ${large} 0 ${x3.toFixed(2)},${y3.toFixed(2)} Z`;
   }
 
-  /* 八方文字：不随盘自转，而以「文字块中心到盘心的距离」算出落点，
-     故无论盘如何转动，八方之卦名永远正立可读。 */
-  /* 八方文字：不随盘自转，而以「文字块中心到盘心的距离」算出落点，
-     故无论盘如何转动，八方之卦名永远正立可读。
+  /* 八方文字：不入旋转层，而按「盘角」逐帧反算落点（labelXY(i, −θ/45)），
+     于是既随阵盘一起划弧（与盘保持相对运动），又永远正立可读。
      扇区自 R_IN(288) 至 R_OUT(470)，文字块中心取 R_LABEL(381)，
      卦象（爻）与卦名分别落在 400 / 321 两条基线上，上下留白大致相当。 */
   const R_LABEL = 381;
@@ -38,6 +36,11 @@
   }
   function labelTf(x, y) { return 'translate(' + x.toFixed(2) + 'px,' + y.toFixed(2) + 'px)'; }
 
+  /* 缓入缓出（慢→快→慢） */
+  function easeInOutCubic(t) {
+    return t < 0.5 ? 4 * t * t * t : (t - 1) * (2 * t - 2) * (2 * t - 2) + 1;
+  }
+
   const Hub = {
     current: null,
     onOpenArt: null,
@@ -46,15 +49,94 @@
     _spinAnim: null,
     _currentRot: 0,
 
+    /* ---------- 阵盘转动 ----------
+       盘角 θ（度，负数为逆时针）。待机时匀速逆时针，与阴阳鱼的顺时针自转反向；
+       选卦时缓动停在「本卦朝上」（θ ≡ −idx×45）；清卦时转回 0° 再续待机。
+       卦名与爻的落点每帧按 θ 反算，故随盘划弧而恒正立。 */
+    _plateDeg: 0,
+    _plateRaf: null,
+    _idleOn: false,
+    _plateLast: 0,
+    _labels: null,
+    IDLE_SPEED: 4,          /* 度/秒：约 90 秒一周，缓而不扰 */
+
     isMobile() { return window.matchMedia('(max-width: 940px)').matches; },
+    reduceMotion() { return window.matchMedia('(prefers-reduced-motion: reduce)').matches; },
+
+    /* 把当前盘角落到 DOM：盘一层、八方文字一层 */
+    _applyPlate() {
+      const th = this._plateDeg;
+      this._parts().rot.style.transform = 'rotate(' + th.toFixed(2) + 'deg)';
+      if (!this._labels) return;
+      const sel = -th / 45;
+      for (let k = 0; k < this._labels.length; k++) {
+        const el = this._labels[k];
+        const xy = labelXY(Number(el.dataset.i), sel);
+        el.style.transform = labelTf(xy[0], xy[1]);
+      }
+    },
+
+    /* 待机逆时针（选卦中、阴阳鱼自转中、系统要求减弱动效时不转） */
+    startIdle() {
+      if (this._idleOn || this._plateRaf || this.current || this.isSpinning || this.reduceMotion()) return;
+      this._idleOn = true;
+      this._plateLast = performance.now();
+      const tick = (ts) => {
+        if (!this._idleOn) return;
+        const dt = Math.min((ts - this._plateLast) / 1000, 0.05);
+        this._plateLast = ts;
+        this._plateDeg -= this.IDLE_SPEED * dt;
+        this._applyPlate();
+        this._plateRaf = requestAnimationFrame(tick);
+      };
+      this._plateRaf = requestAnimationFrame(tick);
+    },
+
+    stopIdle() {
+      this._idleOn = false;
+      if (this._plateRaf) { cancelAnimationFrame(this._plateRaf); this._plateRaf = null; }
+    },
+
+    /* 逆时针缓动到 base（度），中途不停；到达后若已无选中则续待机 */
+    _turnTo(base) {
+      this.stopIdle();
+      const from = this._plateDeg;
+      const d = (((from - base) % 360) + 360) % 360;      /* 还需逆时针转过的角度 */
+      /* 已在位上、或系统要求减弱动效：直接落位，不做空转 */
+      if (d < 0.5 || this.reduceMotion()) {
+        this._plateDeg = base;
+        this._applyPlate();
+        if (!this.current) this.startIdle();
+        return;
+      }
+      const dur = Math.min(2200, Math.max(520, d / 170 * 1000));
+      const self = this;
+      const step = (ts) => {
+        const p = Math.min((ts - self._t0) / dur, 1);
+        self._plateDeg = from + (self._plateTo - from) * easeInOutCubic(p);
+        self._applyPlate();
+        if (p < 1) { self._plateRaf = requestAnimationFrame(step); return; }
+        self._plateDeg = self._plateTo;
+        self._applyPlate();
+        self._plateRaf = null;
+        if (!self.current) self.startIdle();
+      };
+      this._plateTo = from - d;
+      this._t0 = performance.now();
+      this._plateRaf = requestAnimationFrame(step);
+    },
 
     /* ---------- 构建 ---------- */
     init() {
       const host = document.getElementById('wheel-host');
       host.innerHTML = this.buildSvg() + `<div class="wheel-center" id="wheel-center"></div>`;
+      this._labels = Array.prototype.slice.call(document.querySelectorAll('.sec-label'));
+      this._parts().rot.style.transition = 'none';   /* 转动一律由 rAF 驱动，不用 CSS 过渡 */
+      this._applyPlate();                            /* θ=0 时的初始落位，与旧版一致 */
       this.setCenter(null);
       this.buildOtherStrip();
       this.bind();
+      this.startIdle();
     },
 
     buildSvg() {
@@ -167,14 +249,13 @@
       this.select(id);
     },
 
-    /* 使八方文字始终正立：文字自转 = (选中序 − 本卦序) × 45° */
+    /* 只负责「选中」态；落点与正立由 _applyPlate() 每帧按盘角反算 */
     setLabels(sel) {
-      document.querySelectorAll('.sec-label').forEach(el => {
-        const i = Number(el.dataset.i);
-        const xy = labelXY(i, sel < 0 ? 0 : sel);
-        el.style.transform = labelTf(xy[0], xy[1]);
-        el.classList.toggle('on', i === sel);
-      });
+      if (!this._labels) return;
+      for (let k = 0; k < this._labels.length; k++) {
+        const el = this._labels[k];
+        el.classList.toggle('on', Number(el.dataset.i) === sel);
+      }
     },
 
     /* 盘面三部分：整盘 wheelRot / 地支环 zodiacRing / 盘心阴阳鱼 taijiCenter。
@@ -197,18 +278,11 @@
     select(id) {
       const idx = WHEEL_ORDER.indexOf(id);
       if (idx < 0) return;
-      if (this.isSpinning) this._settle();
       this.current = id;
-      const { rot, ring, taiji } = this._parts();
-      const target = -idx * 45;
-      this._currentRot = target;
-      rot.style.transition = 'transform .8s var(--ease)';
-      rot.style.transform = `rotate(${target}deg)`;
-      /* 地支环与阴阳鱼随整盘同转（阴阳鱼随盘，故乾恒为阳首） */
-      ring.style.transition = 'transform .8s var(--ease)';
-      ring.style.transform = 'rotate(0deg)';
-      taiji.style.transition = 'transform .8s var(--ease)';
-      taiji.style.transform = 'rotate(0deg)';
+      if (this.isSpinning) this._settle();
+      /* 停转并对位：自当前盘角继续逆时针，缓动到「本卦朝上」后停住 */
+      this._turnTo(-idx * 45);
+      this._currentRot = -idx * 45;
       this.setLabels(idx);
       document.querySelectorAll('.sector').forEach(s => s.classList.toggle('on', s.dataset.gua === id));
       window.HUB.setCenter(id);
@@ -223,16 +297,11 @@
     },
 
     clear() {
-      if (this.isSpinning) this._settle();
       this.current = null;
+      if (this.isSpinning) this._settle();
+      /* 转回 0°（仍逆时针），到达后自动续待机 */
+      this._turnTo(0);
       this._currentRot = 0;
-      const { rot, ring, taiji } = this._parts();
-      rot.style.transition = 'transform .8s var(--ease)';
-      rot.style.transform = 'rotate(0deg)';
-      ring.style.transition = 'transform .8s var(--ease)';
-      ring.style.transform = 'rotate(0deg)';
-      taiji.style.transition = 'transform .8s var(--ease)';
-      taiji.style.transform = 'rotate(0deg)';
       this.setLabels(-1);
       document.querySelectorAll('.sector').forEach(s => s.classList.remove('on'));
       document.getElementById('hub').classList.remove('branch');
@@ -271,12 +340,14 @@
       });
     },
 
-    /* ---------- 点击阴阳鱼：只转阴阳鱼，阵盘（线条/扇区/地支环）一律不动 ----------
+    /* ---------- 点击阴阳鱼：只转阴阳鱼，阵盘（线条/扇区/卦名）一律不动 ----------
+       故先把待机转动停下，转毕再续（若已有选中卦，则不再续）。
        速度曲线：慢 → 快 → 慢（easeInOutCubic），转整数圈后归零，故落点无跳变 */
     spin() {
       if (this.isSpinning) return;
       const boost = this._taijiBoost();
       if (!boost) return;
+      this.stopIdle();
       this.isSpinning = true;
       boost.style.transition = 'none';
       boost.style.transform = 'rotate(0deg)';
@@ -285,10 +356,6 @@
       const totalDeg = totalRev * 360;
       const duration = 2200 + Math.random() * 500;       // 约 2.2~2.7s
       const startTs = performance.now();
-
-      const easeInOutCubic = (t) => t < 0.5
-        ? 4 * t * t * t
-        : (t - 1) * (2 * t - 2) * (2 * t - 2) + 1;
 
       const tick = (ts) => {
         const p = Math.min((ts - startTs) / duration, 1);
@@ -304,7 +371,7 @@
 
     /* 收尾：正常转完是整数圈（当前角与 0° 视觉等价），必须【无过渡】直接落位——
        否则浏览器按角度数值从 1080° 插值回 0°，会看到反向倒转数圈。
-       仅"中途被点停"才用 smooth 缓回。阵盘始终不动。 */
+       仅"中途被点停"才用 smooth 缓回。阵盘始终不动，转毕恢复待机。 */
     _settle(smooth) {
       this.isSpinning = false;
       if (this._spinAnim) { cancelAnimationFrame(this._spinAnim); this._spinAnim = null; }
@@ -316,6 +383,7 @@
         boost.style.transition = 'none';
       }
       boost.style.transform = 'rotate(0deg)';
+      if (!this.current) this.startIdle();
     },
 
     stopSpin() {
