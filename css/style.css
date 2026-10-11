@@ -40,6 +40,19 @@
 
 *{box-sizing:border-box;}
 html,body{height:100%;}
+/* ---------- 全局禁止拖选文字 ----------
+   本页为「点击式」应用：交互全凭点击（卦象、术数、按钮），无拖选之需。
+   拖选时浏览器要对整页（大尺寸 SVG 八卦盘 + 毛玻璃顶栏 + 大量阴影卡片）
+   反复重算选区高亮与重绘，故有卡顿；直接关掉文字选取即可根治。
+   需要留底者，用术数页的「复制结果」按钮（走 innerText + clipboard，与本规则无关）。 */
+html,body{
+  -webkit-user-select:none; -moz-user-select:none; -ms-user-select:none; user-select:none;
+  -webkit-tap-highlight-color:transparent;
+}
+/* 例外：表单控件必须可选中、可编辑，否则无法输入与二次修改 */
+input,textarea,select,option{
+  -webkit-user-select:text; -moz-user-select:text; -ms-user-select:text; user-select:text;
+}
 body{
   margin:0;
   font-family:var(--font-sans);
