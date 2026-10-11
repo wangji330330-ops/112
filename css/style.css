@@ -112,9 +112,14 @@ body.panel-open #topbar{right:var(--panel-w);}
   display:flex; flex-direction:column; align-items:center; justify-content:center;
   gap:clamp(6px,1.4vh,18px);
   padding:78px clamp(16px,3vw,36px) 56px;
-  transition:padding .5s var(--ease);
+  /* 面板打开时原本动画 padding-right，那等于把盘面/标语/节点整组逐帧重新布局。
+     改为动画 transform：位移交给合成器，布局全程不动。 */
+  transition:transform .5s var(--ease);
+  will-change:transform;
 }
-#hub.shift{padding-right:calc(var(--panel-w) + 16px);}
+/* 面板让出的宽度由位移补上：位移量 = −(面板宽 + 16px − 原右内边距)/2，
+   与原 padding 方案落点完全一致（0.5×clamp 即原右内边距的一半）。 */
+#hub.shift{transform:translateX(calc(-0.5 * (var(--panel-w) + 16px) + 0.5 * clamp(16px,3vw,36px)));}
 .hub-kicker{
   margin:0; font-family:var(--font-kai); font-size:clamp(13px,1.35vw,16px);
   letter-spacing:.22em; color:var(--ink-3); text-indent:.22em;
@@ -129,21 +134,32 @@ body.panel-open #topbar{right:var(--panel-w);}
 
 #hub.shift .hub-kicker,#hub.shift .hub-hint{opacity:0;}
 
+/* 两列恒定为「盘面 + 术数列」：术数列始终占位（平时空着），
+   故排版一次即定，分支时不再逐帧重排——这是「术数出现不丝滑」的根源。
+   平时用一个 transform 把整组推回视口中心（空列占的宽度补回来），
+   分支时归零；transform 由合成器处理，不触发布局。 */
 .hub-inner{
-  display:grid; grid-template-columns:auto 0px;
-  align-items:center; justify-content:center; gap:0; width:100%;
-  transition:grid-template-columns .5s var(--ease), gap .5s var(--ease);
+  display:grid;
+  grid-template-columns:auto min(30vw,380px);
+  align-items:center; justify-content:center; gap:clamp(16px,3vw,52px); width:100%;
+  transform:translateX(calc((min(30vw,380px) + clamp(16px,3vw,52px)) / 2));
+  transition:transform .5s var(--ease);
+  will-change:transform;
 }
-#hub.branch .hub-inner{grid-template-columns:auto min(30vw,380px); gap:clamp(16px,3vw,52px);}
+#hub.branch .hub-inner{transform:none;}
 
 #wheel-host{
-  --wheel: min(58vmin, 560px);
-  --wheel-rest: min(58vmin, 560px);   /* 盘面 SVG 的固定光栅尺寸：不随分支动画改变 */
-  --wheel-scale: 1;                   /* 分支时改由合成器缩放，避免逐帧重绘 */
+  /* 布局尺寸恒定＝分支后的尺寸；静止时用 SVG 的 transform 放大到 58vmin 的观感。
+     尺寸与边距都不再动画，故标语、下方术数条永远不会被推移。 */
+  --wheel: min(44vmin, 420px);
+  --wheel-rest: min(58vmin, 560px);   /* 盘面 SVG 的固定光栅尺寸（静止观感） */
+  --wheel-scale: 1;                   /* 分支时由合成器缩放，不重排不重绘 */
   width:var(--wheel); height:var(--wheel); position:relative; justify-self:center;
-  transition:width .5s var(--ease), height .5s var(--ease);
+  /* 静止时盘面视觉上比容器大 (58−44)vmin，上下各溢出一半，用静态外边距预留，
+     使其不会压到上方标语与下方「其他术数」条。 */
+  margin:calc((min(58vmin, 560px) - min(44vmin, 420px)) / 2) 0;
 }
-#hub.branch #wheel-host{--wheel: min(44vmin, 420px); --wheel-scale:.7586;}   /* 44/58 */
+#hub.branch #wheel-host{--wheel-scale:.7586;}   /* 44/58 */
 /* 盘面改用「绝对定位 + 固定尺寸 + transform 缩放」：
    先前 SVG 宽高随容器从 58vmin 动画到 44vmin，浏览器每一帧都要按新尺寸
    重新布局并重新光栅化整块盘面（含 8 个卦名与地支文字）；而上方的标语
@@ -571,11 +587,19 @@ body.panel-open #footnote{opacity:0; transform:translateY(8px);}
   .brand-text{font-size:18px;}
   .brand-sub{display:none;}
   #hub{padding:66px 12px 10px; justify-content:flex-start; gap:10px; overflow-y:auto;}
-  #hub.shift{padding-right:12px;}
-  #hub.branch .hub-inner{grid-template-columns:auto 0px;}
+  #hub.shift{padding-right:12px; transform:none;}   /* 手机端面板自下方升起，无需横向让位 */
+  /* 手机端术数列表改为自下方升起的面板，八卦盘右侧不再留术数列 */
+  .hub-inner{grid-template-columns:auto 0px; gap:0; transform:none;}
+  #hub.branch .hub-inner{grid-template-columns:auto 0px; transform:none;}
   #branch-nodes{display:none;}
-  #hub #wheel-host{--wheel: min(72vmin,380px); --wheel-rest: min(72vmin,380px); --wheel-scale:1;}
-  #hub.branch #wheel-host{--wheel: min(60vmin,340px); --wheel-scale:.8333;}   /* 60/72 */
+  #hub #wheel-host,
+  #hub.branch #wheel-host{
+    --wheel: min(60vmin,340px);              /* 布局恒定＝分支尺寸 */
+    --wheel-rest: min(72vmin,380px);         /* 静止观感 */
+    margin:calc((min(72vmin,380px) - min(60vmin,340px)) / 2) 0;
+  }
+  #hub #wheel-host{--wheel-scale:1;}
+  #hub.branch #wheel-host{--wheel-scale:.8333;}   /* 60/72 */
   .strip-note{display:none;}
   #panel{
     width:100vw; height:88vh; top:auto; bottom:0;
